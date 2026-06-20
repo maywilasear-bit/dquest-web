@@ -11,7 +11,7 @@ export default function Staff() {
   const [role, setRole] = useState<"teacher" | "admin" | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [tab, setTab] = useState<"claims" | "deeds">("claims");
+  const [tab, setTab] = useState<"claims" | "deeds" | "award">("claims");
   const [showAll, setShowAll] = useState(false);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -22,6 +22,12 @@ export default function Staff() {
   const [error, setError] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [seasonMsg, setSeasonMsg] = useState<string | null>(null);
+  const [awardQ, setAwardQ] = useState("");
+  const [awardResults, setAwardResults] = useState<{ id: string; fullname: string; group_name: string | null }[]>([]);
+  const [awardSel, setAwardSel] = useState<{ id: string; fullname: string } | null>(null);
+  const [awardAmount, setAwardAmount] = useState(10);
+  const [awardReason, setAwardReason] = useState("");
+  const [awardMsg, setAwardMsg] = useState<string | null>(null);
 
   const loadClaims = useCallback(async (all: boolean) => {
     const supabase = createClient();
@@ -113,6 +119,23 @@ export default function Staff() {
     setSubs((list) => list.filter((x) => x.sub_id !== s.sub_id));
     setBusy(null);
   }
+  async function searchStudents(q: string) {
+    setAwardQ(q); setAwardMsg(null);
+    if (q.trim().length < 1) { setAwardResults([]); return; }
+    const supabase = createClient();
+    const { data } = await supabase.rpc("search_roster", { q: q.trim() });
+    setAwardResults((data as { id: string; fullname: string; group_name: string | null }[]) ?? []);
+  }
+  async function doAward() {
+    if (!awardSel || !awardReason.trim()) { setError("กรอกเหตุผลก่อนให้เหรียญ"); return; }
+    setBusy("award"); setError(null); setAwardMsg(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("award_coins", { p_student: awardSel.id, p_amount: awardAmount, p_reason: awardReason.trim() });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAwardMsg(`ให้ ${awardAmount} เหรียญ D แก่ ${awardSel.fullname} แล้ว`);
+    setAwardSel(null); setAwardQ(""); setAwardResults([]); setAwardReason("");
+  }
   async function doEndSeason() {
     setBusy("season"); setError(null);
     const supabase = createClient();
@@ -174,6 +197,7 @@ export default function Staff() {
         <div className="mt-5 flex gap-2">
           <TabBtn active={tab === "claims"} onClick={() => setTab("claims")}>ยืนยันตัวตน ({claims.length})</TabBtn>
           <TabBtn active={tab === "deeds"} onClick={() => setTab("deeds")}>ตรวจความดี ({subs.length})</TabBtn>
+          <TabBtn active={tab === "award"} onClick={() => setTab("award")}>ให้เหรียญ</TabBtn>
         </div>
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
@@ -253,6 +277,50 @@ export default function Staff() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "award" && (
+          <div className="mt-4 flex flex-col gap-3">
+            <p className="text-xs text-[#8a7d72]">ค้นชื่อนักศึกษาที่ช่วยงาน แล้วให้เหรียญ D เป็นการตอบแทน — ไม่กระทบกระดานแข่ง (ทุกครั้งบันทึกตรวจย้อนได้)</p>
+            {!awardSel ? (
+              <>
+                <input value={awardQ} onChange={(e) => searchStudents(e.target.value)} autoFocus placeholder="พิมพ์ชื่อนักศึกษา"
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
+                {awardMsg && <p className="text-sm text-[#7dd87d]">{awardMsg}</p>}
+                <div className="flex flex-col gap-2">
+                  {awardResults.map((r) => (
+                    <button key={r.id} onClick={() => { setAwardSel({ id: r.id, fullname: r.fullname }); setAwardResults([]); }}
+                      className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left transition-colors hover:border-[#f37021]/40 hover:bg-white/10">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-[#faf5ef]">{r.fullname}</span>
+                        <span className="block truncate text-xs text-[#8a7d72]">{r.group_name}</span>
+                      </span>
+                      <span className="shrink-0 text-[#6f635a]">→</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-sm font-semibold text-[#faf5ef]">{awardSel.fullname}</p>
+                  <button onClick={() => setAwardSel(null)} className="shrink-0 text-xs text-[#8a7d72] hover:text-[#ab9d92]">เปลี่ยนคน</button>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  {[5, 10, 20, 50].map((n) => (
+                    <button key={n} onClick={() => setAwardAmount(n)}
+                      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${awardAmount === n ? "bg-[#e9c75e] text-[#16100e]" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>{n}</button>
+                  ))}
+                </div>
+                <input value={awardReason} onChange={(e) => setAwardReason(e.target.value)} placeholder="เหตุผล เช่น ช่วยยกของ / จัดห้อง / ทำความสะอาด"
+                  className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
+                <button onClick={doAward} disabled={busy === "award"}
+                  className="mt-3 w-full rounded-lg bg-[#f37021] py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">
+                  {busy === "award" ? "กำลังให้..." : `ให้ ${awardAmount} เหรียญ D`}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
