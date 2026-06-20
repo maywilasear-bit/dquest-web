@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
-import { Character, parseAvatar, AvatarConfig, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, HAIR_LABELS, OUTFIT_COLORS } from "../../utils/Character";
+import { Character, parseAvatar, AvatarConfig, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, HAIR_LABELS, OUTFIT_COLORS,
+  withSkin, withHairStyle, withHairColor, withOutfit, hairStyleOf, hairColorOf, outfitOf } from "../../utils/Character";
 
 type Profile = {
   display_name: string | null; realname: string; fullname: string;
@@ -133,19 +134,19 @@ export default function Profile() {
             </div>
 
             <Picker label="สีผิว">
-              {SKIN_TONES.map((c) => <Swatch key={c} color={c} active={avatar.skin === c} onClick={() => setAvatar({ ...avatar, skin: c })} />)}
+              {SKIN_TONES.map((c) => <Swatch key={c} color={c} active={avatar.body.skin === c} onClick={() => setAvatar(withSkin(avatar, c))} />)}
             </Picker>
             <Picker label="ทรงผม">
               {HAIR_STYLES.map((st) => (
-                <button key={st} onClick={() => setAvatar({ ...avatar, style: st })}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${avatar.style === st ? "bg-[#f37021] text-white" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>{HAIR_LABELS[st]}</button>
+                <button key={st} onClick={() => setAvatar(withHairStyle(avatar, st))}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${hairStyleOf(avatar) === st ? "bg-[#f37021] text-white" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>{HAIR_LABELS[st]}</button>
               ))}
             </Picker>
             <Picker label="สีผม">
-              {HAIR_COLORS.map((c) => <Swatch key={c} color={c} active={avatar.hair === c} onClick={() => setAvatar({ ...avatar, hair: c })} />)}
+              {HAIR_COLORS.map((c) => <Swatch key={c} color={c} active={hairColorOf(avatar) === c} onClick={() => setAvatar(withHairColor(avatar, c))} />)}
             </Picker>
             <Picker label="สีชุด">
-              {OUTFIT_COLORS.map((c) => <Swatch key={c} color={c} active={avatar.outfit === c} onClick={() => setAvatar({ ...avatar, outfit: c })} />)}
+              {OUTFIT_COLORS.map((c) => <Swatch key={c} color={c} active={outfitOf(avatar) === c} onClick={() => setAvatar(withOutfit(avatar, c))} />)}
             </Picker>
 
             {avatarMsg && <p className="mt-3 text-sm text-[#7dd87d]">{avatarMsg}</p>}

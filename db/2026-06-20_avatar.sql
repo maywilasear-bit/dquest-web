@@ -10,7 +10,7 @@ create or replace function set_avatar(p_key text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if me() is null then raise exception 'not active'; end if;
-  if p_key is not null and char_length(p_key) > 400 then
+  if p_key is not null and char_length(p_key) > 2000 then   -- รองรับ config แบบ slot/layer
     raise exception 'avatar config too large';
   end if;
   update profiles set avatar_key = p_key, updated_at = now() where id = me();
