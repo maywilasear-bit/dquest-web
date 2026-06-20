@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+html { color-scheme: dark; }
+body {
+  background: #16100e;
+  color: #f5efe9;
+}
+
+@keyframes dq-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes dq-breathe {
+  0%, 100% { opacity: 0.4;  transform: scale(1); }
+  50%      { opacity: 0.75; transform: scale(1.15); }
+}
+@keyframes dq-grow {
+  from { width: 0; }
+  to   { width: 2rem; }
+}
+.dq-anim { opacity: 0; animation: dq-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.dq-glow { animation: dq-breathe 8s ease-in-out infinite; }
+.dq-grow { width: 0; animation: dq-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
+@keyframes dq-reveal {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.dq-reveal { animation: dq-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
