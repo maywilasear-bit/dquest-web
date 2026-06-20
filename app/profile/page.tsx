@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { Character, parseAvatar, AvatarConfig, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, HAIR_LABELS, OUTFIT_COLORS } from "../../utils/Character";
 
 type Profile = {
   display_name: string | null; realname: string; fullname: string;
@@ -34,6 +35,9 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -43,7 +47,10 @@ export default function Profile() {
       const { data } = await supabase.rpc("get_profile");
       if (!data) { router.push("/"); return; }
       const prof = data as Profile;
-      setP(prof); setName(prof.display_name ?? ""); setLoading(false);
+      setP(prof); setName(prof.display_name ?? "");
+      const { data: arow } = await supabase.from("profiles").select("avatar_key, gender").eq("auth_id", u.user.id).maybeSingle();
+      setAvatar(parseAvatar(arow?.avatar_key, prof.department, arow?.gender));
+      setLoading(false);
     })();
   }, [router]);
 
@@ -57,6 +64,15 @@ export default function Profile() {
     if (error) { setErr(error.message); return; }
     setMsg("บันทึกชื่อเล่นแล้ว");
     setP((prev) => prev ? { ...prev, display_name: name.trim() } : prev);
+  }
+
+  async function saveAvatar() {
+    if (!avatar) return;
+    setSavingAvatar(true); setAvatarMsg(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("set_avatar", { p_key: JSON.stringify(avatar) });
+    setSavingAvatar(false);
+    setAvatarMsg(error ? "บันทึกไม่สำเร็จ" : "บันทึกตัวละครแล้ว");
   }
 
   if (loading || !p) return <main className="min-h-screen flex items-center justify-center bg-[#16100e] text-[#8a7d72]">กำลังโหลด...</main>;
@@ -106,13 +122,37 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="dq-anim mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4 opacity-70" style={{ animationDelay: "260ms" }}>
-          <div>
-            <p className="text-sm font-medium text-[#cbbfb4]">ปรับแต่งตัวละคร</p>
-            <p className="text-xs text-[#6f635a]">เลือกหน้าตา / ใช้ของจากกาชา</p>
+        {avatar && (
+          <div className="dq-anim mt-3 rounded-xl border border-white/10 bg-white/5 p-4" style={{ animationDelay: "260ms" }}>
+            <p className="mb-3 text-sm font-medium text-[#cbbfb4]">ปรับแต่งตัวละคร</p>
+            <div className="flex justify-center">
+              <div className="relative flex h-40 w-40 items-end justify-center">
+                <div className="absolute bottom-2 h-6 w-28 rounded-[50%] bg-[#f37021]/20 blur-lg" />
+                <Character config={avatar} className="relative h-40 w-auto" />
+              </div>
+            </div>
+
+            <Picker label="สีผิว">
+              {SKIN_TONES.map((c) => <Swatch key={c} color={c} active={avatar.skin === c} onClick={() => setAvatar({ ...avatar, skin: c })} />)}
+            </Picker>
+            <Picker label="ทรงผม">
+              {HAIR_STYLES.map((st) => (
+                <button key={st} onClick={() => setAvatar({ ...avatar, style: st })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${avatar.style === st ? "bg-[#f37021] text-white" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>{HAIR_LABELS[st]}</button>
+              ))}
+            </Picker>
+            <Picker label="สีผม">
+              {HAIR_COLORS.map((c) => <Swatch key={c} color={c} active={avatar.hair === c} onClick={() => setAvatar({ ...avatar, hair: c })} />)}
+            </Picker>
+            <Picker label="สีชุด">
+              {OUTFIT_COLORS.map((c) => <Swatch key={c} color={c} active={avatar.outfit === c} onClick={() => setAvatar({ ...avatar, outfit: c })} />)}
+            </Picker>
+
+            {avatarMsg && <p className="mt-3 text-sm text-[#7dd87d]">{avatarMsg}</p>}
+            <button onClick={saveAvatar} disabled={savingAvatar}
+              className="mt-3 w-full rounded-lg bg-[#f37021] py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{savingAvatar ? "กำลังบันทึก..." : "บันทึกตัวละคร"}</button>
           </div>
-          <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-[#8a7d72]">เร็วๆ นี้</span>
-        </div>
+        )}
       </div>
     </main>
   );
@@ -124,5 +164,22 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
       <span className="text-lg font-bold" style={{ color }}>{value}</span>
       <span className="text-[10px] leading-tight text-[#8a7d72]">{label}</span>
     </div>
+  );
+}
+
+function Picker({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mt-3">
+      <p className="mb-1.5 text-xs text-[#8a7d72]">{label}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function Swatch({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} aria-label={color}
+      className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 ${active ? "border-[#f37021]" : "border-white/15"}`}
+      style={{ backgroundColor: color }} />
   );
 }

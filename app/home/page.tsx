@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { Character, parseAvatar, AvatarConfig } from "../../utils/Character";
 
 type Home = {
   name: string; fullname: string; department: string | null; level: string | null;
@@ -14,6 +15,7 @@ export default function HomePage() {
   const [data, setData] = useState<Home | null>(null);
   const [checking, setChecking] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -23,6 +25,8 @@ export default function HomePage() {
       const { data: home, error } = await supabase.rpc("get_home_data");
       if (error || !home) { router.push("/"); return; }
       setData(home as Home);
+      const { data: prof } = await supabase.from("profiles").select("avatar_key, gender, department").eq("auth_id", u.user.id).maybeSingle();
+      setAvatar(parseAvatar(prof?.avatar_key, prof?.department, prof?.gender));
       setChecking(false);
     })();
   }, [router]);
@@ -75,9 +79,8 @@ export default function HomePage() {
 
           <div className="dq-anim relative flex flex-col items-center" style={{ animationDelay: "240ms" }}>
             <div className="relative flex h-44 w-44 items-end justify-center">
-              <div className="dq-glow absolute bottom-2 h-8 w-36 rounded-[50%] bg-[#f37021]/30 blur-xl" />
-              <div className="absolute bottom-3 h-3 w-28 rounded-[50%] border border-[#f37021]/30 bg-[#f37021]/10" />
-              <span className="relative mb-2 text-[#5a4c43]"><IconUser className="h-28 w-28" strokeWidth={1.2} /></span>
+              <div className="dq-glow absolute bottom-1 h-8 w-36 rounded-[50%] bg-[#f37021]/30 blur-xl" />
+              {avatar && <Character config={avatar} className="relative h-44 w-auto" />}
             </div>
             <button onClick={() => router.push("/profile")} className="mt-1 rounded-full border border-white/10 px-3 py-1 text-[11px] text-[#8a7d72] transition-colors hover:bg-white/5">ปรับแต่งตัวละคร</button>
           </div>
