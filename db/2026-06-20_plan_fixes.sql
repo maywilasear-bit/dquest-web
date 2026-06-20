@@ -20,7 +20,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare my_fullname text; am_admin boolean;
 begin
   if not is_staff() then raise exception 'staff only'; end if;
-  select fullname, (role = 'admin') into my_fullname, am_admin from profiles where id = me();
+  select p.fullname, (p.role = 'admin') into my_fullname, am_admin from profiles p where p.id = me();
   return query
     select c.id, p.id, p.fullname, p.group_name, p.department, p.advisor, c.requested_at
     from claims c
@@ -112,6 +112,24 @@ using (
   bucket_id = 'deed-photos'
   and exists (select 1 from profiles where auth_id = auth.uid() and role in ('teacher','admin'))
 );
+
+-- -----------------------------------------------------------------------------
+-- FIX 5 — บั๊ก column ambiguous ในฟังก์ชันเดิมของ schema (เจอตอนเทสต์ปุ่มปฏิเสธ)
+--   reject_claim เขียน "note = note" → พารามิเตอร์ชนชื่อคอลัมน์ → ระบุ reject_claim.note
+-- -----------------------------------------------------------------------------
+create or replace function reject_claim(claim_id uuid, note text default null)
+returns void language plpgsql security definer set search_path = public as $$
+declare c claims;
+begin
+  if not is_staff() then raise exception 'staff only'; end if;
+  select * into c from claims where id = claim_id;
+  if not found then raise exception 'claim not found'; end if;
+  update claims set status = 'rejected', decided_by = me(), decided_at = now(),
+                    note = reject_claim.note
+    where id = claim_id;
+  update profiles set status = 'unclaimed' where id = c.profile_id and auth_id is null;
+end $$;
+grant execute on function reject_claim(uuid, text) to anon, authenticated;
 
 -- =============================================================================
 -- เสร็จ — ควรขึ้น "Success. No rows returned"

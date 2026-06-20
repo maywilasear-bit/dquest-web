@@ -47,6 +47,10 @@ export default function Leaderboard() {
             <p className="text-xs font-semibold tracking-[0.2em] text-[#f37021]">อันดับ</p>
             <h1 className="text-xl font-bold text-[#faf5ef]">ซีซั่น: {board?.season}</h1>
           </div>
+          <button onClick={() => router.push("/hall")} className="ml-auto flex items-center gap-1.5 rounded-full border border-[#e9c75e]/30 bg-[#e9c75e]/10 px-3 py-1.5 text-xs font-semibold text-[#e9c75e] transition-colors hover:bg-[#e9c75e]/15">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.7V17c0 .6-.5 1-1 1.2C7.8 18.8 7 20.2 7 22" /><path d="M14 14.7V17c0 .6.5 1 1 1.2 1.2.6 2 2 2 2.8" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+            หอเกียรติยศ
+          </button>
         </div>
 
         <div className="dq-anim mt-5 flex gap-2" style={{ animationDelay: "100ms" }}>

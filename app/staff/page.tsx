@@ -20,6 +20,8 @@ export default function Staff() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [seasonMsg, setSeasonMsg] = useState<string | null>(null);
 
   const loadClaims = useCallback(async (all: boolean) => {
     const supabase = createClient();
@@ -109,6 +111,16 @@ export default function Staff() {
     // ลบรูปออกจาก Storage หลังตรวจเสร็จ (กันพื้นที่เต็ม — แผน §6.4)
     if (s.photo_path) await supabase.storage.from("deed-photos").remove([s.photo_path]);
     setSubs((list) => list.filter((x) => x.sub_id !== s.sub_id));
+    setBusy(null);
+  }
+  async function doEndSeason() {
+    setBusy("season"); setError(null);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("end_season");
+    if (error) { setError(error.message); setBusy(null); return; }
+    const r = data as { ended_season: number; new_season: number; new_theme: string };
+    setSeasonMsg(`จบซีซั่น ${r.ended_season} แล้ว · เริ่มซีซั่น ${r.new_season}: ${r.new_theme} (D Score รีเซ็ตแล้ว)`);
+    setConfirmEnd(false);
     setBusy(null);
   }
 
@@ -241,6 +253,23 @@ export default function Staff() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {role === "admin" && (
+          <div className="mt-8 rounded-xl border border-[#7a1f1f]/40 bg-[#7a1f1f]/10 p-4">
+            <p className="text-xs font-semibold tracking-wide text-[#e7a18a]">ผู้ดูแลระบบ · จัดการซีซั่น</p>
+            <p className="mt-1 text-xs text-[#8a7d72]">จบซีซั่นปัจจุบัน: บันทึก Top 3 วิทยาลัย + แชมป์แผนกลงหอเกียรติยศ แล้วเริ่มซีซั่นใหม่ · D Score รีเซ็ต · เหรียญ/ของในกระเป๋าไม่หาย</p>
+            {seasonMsg && <p className="mt-2 text-sm text-[#7dd87d]">{seasonMsg}</p>}
+            {!confirmEnd ? (
+              <button onClick={() => setConfirmEnd(true)} className="mt-3 rounded-lg border border-[#e7a18a]/40 px-4 py-2 text-xs font-semibold text-[#e7a18a] transition-colors hover:bg-[#7a1f1f]/20">จบซีซั่นนี้ &amp; เริ่มใหม่</button>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-[#cbbfb4]">แน่ใจไหม? ย้อนกลับไม่ได้</span>
+                <button onClick={doEndSeason} disabled={busy !== null} className="rounded-lg bg-[#b5482f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#c5543a] disabled:opacity-50">{busy === "season" ? "กำลังจบ..." : "ยืนยันจบซีซั่น"}</button>
+                <button onClick={() => setConfirmEnd(false)} className="text-xs text-[#8a7d72] hover:text-[#ab9d92]">ยกเลิก</button>
+              </div>
+            )}
           </div>
         )}
 
