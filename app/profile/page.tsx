@@ -10,12 +10,19 @@ type Profile = {
   d_coin: number; behavior: number; d_score: number; season: string;
 };
 
-const BLOCKED = ["เหี้ย", "สัส", "ควย", "fuck", "shit"]; // ขยายเพิ่มได้
+// ตรงกับตัวกรองฝั่ง server (set_display_name) — อันนี้แค่ feedback ทันที ของจริงบังคับที่ server
+const BLOCKED = [
+  "เหี้ย", "เหี้ยะ", "สัส", "สาด", "สัด", "ควย", "คอย", "หี", "เย็ด", "แตด", "ระยำ",
+  "ดอกทอง", "กระหรี่", "กะหรี่", "แม่ง", "มึงตาย", "จัญไร", "เงี่ยน", "ส้นตีน", "ไอ้สัตว์", "ชาติหมา",
+  "fuck", "fuk", "fck", "shit", "sht", "bitch", "cunt", "dick", "pussy", "asshole",
+  "bastard", "nigger", "nigga", "whore", "slut", "porn", "sex",
+];
 function validName(n: string): string | null {
   const t = n.trim();
   if (t.length < 2) return "ชื่อสั้นเกินไป (อย่างน้อย 2 ตัวอักษร)";
   if (t.length > 20) return "ชื่อยาวเกินไป (ไม่เกิน 20 ตัวอักษร)";
-  if (BLOCKED.some((w) => t.toLowerCase().includes(w))) return "ชื่อมีคำไม่เหมาะสม";
+  const norm = t.toLowerCase().replace(/\s/g, "");
+  if (BLOCKED.some((w) => norm.includes(w))) return "ชื่อนี้มีคำไม่เหมาะสม กรุณาตั้งใหม่";
   return null;
 }
 
@@ -93,7 +100,10 @@ export default function Profile() {
           </div>
           {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
           {msg && <p className="mt-2 text-sm text-[#7dd87d]">{msg}</p>}
-          <p className="mt-2 text-xs text-[#6f635a]">ชื่อจริงจะแสดงควบคู่เสมอ</p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-[#6f635a]">ชื่อจริงจะแสดงควบคู่เสมอ</p>
+            <span className={`text-xs ${name.trim().length > 20 ? "text-red-400" : "text-[#6f635a]"}`}>{name.trim().length}/20</span>
+          </div>
         </div>
 
         <div className="dq-anim mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4 opacity-70" style={{ animationDelay: "260ms" }}>
