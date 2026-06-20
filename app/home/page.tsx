@@ -6,7 +6,7 @@ import { createClient } from "../../utils/supabase/client";
 
 type Home = {
   name: string; fullname: string; department: string | null; level: string | null;
-  d_coin: number; d_score: number; season: string; unread: number;
+  d_coin: number; d_score: number; season: string; unread: number; can_checkin: boolean;
 };
 
 export default function HomePage() {
@@ -86,6 +86,19 @@ export default function HomePage() {
         {/* PRIMARY */}
         <button onClick={() => router.push("/quest")} className="dq-anim flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-b from-[#ff8636] to-[#ef6a17] px-6 py-4 text-base font-bold text-white shadow-[0_18px_50px_-14px_rgba(243,112,33,0.7)] transition-all hover:-translate-y-0.5" style={{ animationDelay: "340ms" }}>
           <IconHeart className="h-6 w-6" /> ทำความดี
+        </button>
+
+        {/* DAILY CHECK-IN */}
+        <button onClick={() => router.push("/checkin")} className="dq-anim mt-3 flex items-center justify-between rounded-xl border border-[#e9c75e]/30 bg-[#e9c75e]/10 px-4 py-3 transition-colors hover:bg-[#e9c75e]/15" style={{ animationDelay: "380ms" }}>
+          <span className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e9c75e]/20 text-[#e9c75e]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            </span>
+          <span className="text-sm font-semibold text-[#faf5ef]">เช็คอินรายวัน</span>
+          </span>
+          {data.can_checkin
+            ? <span className="flex items-center gap-1.5 text-xs font-semibold text-[#e9c75e]">รับเลย<span className="h-2 w-2 rounded-full bg-[#e9c75e]" /></span>
+            : <span className="text-xs text-[#8a7d72]">วันนี้แล้ว</span>}
         </button>
 
         {/* DOCK */}
