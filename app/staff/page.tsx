@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 
-type Claim = { claim_id: string; fullname: string; group_name: string | null; department: string | null; advisor: string | null };
+type Claim = { claim_id: string; profile_id: string; fullname: string; group_name: string | null; department: string | null; advisor: string | null };
 type Sub = { sub_id: string; fullname: string; group_name: string | null; deed_label: string; min_score: number; max_score: number; description: string | null; photo_path: string | null; created_at: string };
 
 export default function Staff() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [role, setRole] = useState<"teacher" | "admin" | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<"claims" | "deeds">("claims");
+  const [showAll, setShowAll] = useState(false);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -19,34 +21,44 @@ export default function Staff() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const loadClaims = useCallback(async (all: boolean) => {
     const supabase = createClient();
-    const [c, s] = await Promise.all([
-      supabase.rpc("list_pending_claims"),
-      supabase.rpc("list_pending_submissions"),
-    ]);
-    if (c.data) setClaims(c.data as Claim[]);
-    if (s.data) {
-      const list = s.data as Sub[];
-      setSubs(list);
-      const sc: Record<string, number> = {};
-      const urls: Record<string, string> = {};
-      for (const x of list) {
-        sc[x.sub_id] = x.min_score;
-        if (x.photo_path) urls[x.sub_id] = supabase.storage.from("deed-photos").getPublicUrl(x.photo_path).data.publicUrl;
-      }
-      setScores(sc);
-      setPhotoUrls(urls);
-    }
+    const { data, error } = await supabase.rpc("list_pending_claims", { p_all: all });
+    if (error) setError(error.message);
+    else setClaims((data as Claim[]) ?? []);
   }, []);
+
+  const loadSubs = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase.rpc("list_pending_submissions");
+    const list = (data as Sub[]) ?? [];
+    setSubs(list);
+    const sc: Record<string, number> = {};
+    const urls: Record<string, string> = {};
+    for (const x of list) {
+      sc[x.sub_id] = x.min_score;
+      if (x.photo_path) urls[x.sub_id] = supabase.storage.from("deed-photos").getPublicUrl(x.photo_path).data.publicUrl;
+    }
+    setScores(sc);
+    setPhotoUrls(urls);
+  }, []);
+
+  const load = useCallback(async (all: boolean) => {
+    await Promise.all([loadClaims(all), loadSubs()]);
+  }, [loadClaims, loadSubs]);
 
   const checkAuth = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
     if (!data.user) { setAuthed(false); return; }
     const { data: prof } = await supabase.from("profiles").select("role").eq("auth_id", data.user.id).maybeSingle();
-    if (prof?.role === "teacher" || prof?.role === "admin") { setAuthed(true); await load(); }
-    else { setAuthed(false); setError("บัญชีนี้ไม่มีสิทธิ์เจ้าหน้าที่"); }
+    if (prof?.role === "teacher" || prof?.role === "admin") {
+      setAuthed(true);
+      setRole(prof.role);
+      const all = prof.role === "admin";   // admin เห็นทุกกลุ่มเป็นค่าเริ่มต้น
+      setShowAll(all);
+      await load(all);
+    } else { setAuthed(false); setError("บัญชีนี้ไม่มีสิทธิ์เจ้าหน้าที่"); }
   }, [load]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
@@ -62,7 +74,11 @@ export default function Staff() {
   async function logout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    setClaims([]); setSubs([]); setAuthed(false);
+    setClaims([]); setSubs([]); setAuthed(false); setRole(null);
+  }
+  async function toggleScope(all: boolean) {
+    setShowAll(all);
+    await loadClaims(all);
   }
   async function decideClaim(id: string, approve: boolean) {
     setBusy(id); setError(null);
@@ -74,14 +90,25 @@ export default function Staff() {
     else setClaims((c) => c.filter((x) => x.claim_id !== id));
     setBusy(null);
   }
-  async function reviewSub(id: string, approve: boolean) {
-    setBusy(id); setError(null);
+  async function approveGroup(groupName: string, groupClaims: Claim[]) {
+    const ids = groupClaims.map((c) => c.claim_id);
+    setBusy("group:" + groupName); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("approve_claims_bulk", { p_claim_ids: ids });
+    if (error) setError(error.message);
+    else setClaims((c) => c.filter((x) => !ids.includes(x.claim_id)));
+    setBusy(null);
+  }
+  async function reviewSub(s: Sub, approve: boolean) {
+    setBusy(s.sub_id); setError(null);
     const supabase = createClient();
     const { error } = approve
-      ? await supabase.rpc("review_submission", { p_sub: id, decision: "approve", p_score: scores[id] })
-      : await supabase.rpc("review_submission", { p_sub: id, decision: "reject", p_note: "ไม่ผ่าน" });
-    if (error) setError(error.message);
-    else setSubs((s) => s.filter((x) => x.sub_id !== id));
+      ? await supabase.rpc("review_submission", { p_sub: s.sub_id, decision: "approve", p_score: scores[s.sub_id] })
+      : await supabase.rpc("review_submission", { p_sub: s.sub_id, decision: "reject", p_note: "ไม่ผ่าน" });
+    if (error) { setError(error.message); setBusy(null); return; }
+    // ลบรูปออกจาก Storage หลังตรวจเสร็จ (กันพื้นที่เต็ม — แผน §6.4)
+    if (s.photo_path) await supabase.storage.from("deed-photos").remove([s.photo_path]);
+    setSubs((list) => list.filter((x) => x.sub_id !== s.sub_id));
     setBusy(null);
   }
 
@@ -115,6 +142,8 @@ export default function Staff() {
     );
   }
 
+  const groups = groupByOrder(claims, (c) => c.group_name ?? c.department ?? "อื่นๆ");
+
   return (
     <main className="min-h-screen bg-[#16100e] text-[#f5efe9]">
       <div className="h-1 bg-gradient-to-r from-[#f37021] via-[#7a1f1f] to-transparent" />
@@ -125,7 +154,7 @@ export default function Staff() {
             <h1 className="mt-1 text-2xl font-bold text-[#faf5ef]">D-Quest</h1>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={load} className="text-sm text-[#f37021] hover:underline">รีเฟรช</button>
+            <button onClick={() => load(showAll)} className="text-sm text-[#f37021] hover:underline">รีเฟรช</button>
             <button onClick={logout} className="text-sm text-[#8a7d72] hover:text-[#ab9d92]">ออกจากระบบ</button>
           </div>
         </div>
@@ -138,22 +167,48 @@ export default function Staff() {
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
         {tab === "claims" && (
-          <div className="mt-4 flex flex-col gap-3">
-            {claims.length === 0 && <Empty>ไม่มีคำขอที่รออนุมัติ</Empty>}
-            {claims.map((c) => (
-              <div key={c.claim_id} className="dq-anim rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#faf5ef]">{c.fullname}</p>
-                  <p className="truncate text-xs text-[#8a7d72]">{c.group_name ?? c.department}</p>
-                  {c.advisor && <p className="truncate text-xs text-[#6f635a]">ครูที่ปรึกษา: {c.advisor}</p>}
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button onClick={() => decideClaim(c.claim_id, false)} disabled={busy === c.claim_id} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">ปฏิเสธ</button>
-                  <button onClick={() => decideClaim(c.claim_id, true)} disabled={busy === c.claim_id} className="rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{busy === c.claim_id ? "..." : "อนุมัติ"}</button>
-                </div>
+          <>
+            {role === "teacher" && (
+              <div className="mt-4 flex items-center gap-2">
+                <ScopeBtn active={!showAll} onClick={() => toggleScope(false)}>เฉพาะกลุ่มของฉัน</ScopeBtn>
+                <ScopeBtn active={showAll} onClick={() => toggleScope(true)}>ดูทั้งหมด</ScopeBtn>
               </div>
-            ))}
-          </div>
+            )}
+            <div className="mt-4 flex flex-col gap-6">
+              {claims.length === 0 && (
+                <Empty>{showAll || role === "admin" ? "ไม่มีคำขอที่รออนุมัติ" : "ไม่มีคำขอจากลูกศิษย์ของคุณ — ลองกด “ดูทั้งหมด” เพื่อช่วยกลุ่มอื่น"}</Empty>
+              )}
+              {groups.map(([gname, gclaims]) => (
+                <div key={gname}>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-xs font-semibold text-[#cbbfb4]">
+                      {gname} <span className="text-[#6f635a]">· {gclaims.length} คน</span>
+                    </p>
+                    {gclaims.length > 1 && (
+                      <button onClick={() => approveGroup(gname, gclaims)} disabled={busy !== null}
+                        className="shrink-0 rounded-lg bg-[#f37021]/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">
+                        {busy === "group:" + gname ? "กำลังอนุมัติ..." : `อนุมัติทั้งกลุ่ม (${gclaims.length})`}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {gclaims.map((c) => (
+                      <div key={c.claim_id} className="dq-anim rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#faf5ef]">{c.fullname}</p>
+                          {c.advisor && <p className="truncate text-xs text-[#6f635a]">ครูที่ปรึกษา: {c.advisor}</p>}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <button onClick={() => decideClaim(c.claim_id, false)} disabled={busy !== null} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">ปฏิเสธ</button>
+                          <button onClick={() => decideClaim(c.claim_id, true)} disabled={busy !== null} className="rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{busy === c.claim_id ? "..." : "อนุมัติ"}</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {tab === "deeds" && (
@@ -179,8 +234,8 @@ export default function Staff() {
                         className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-[#e9c75e] outline-none focus:border-[#f37021]" />
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <button onClick={() => reviewSub(s.sub_id, false)} disabled={busy === s.sub_id} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">ปฏิเสธ</button>
-                      <button onClick={() => reviewSub(s.sub_id, true)} disabled={busy === s.sub_id} className="rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{busy === s.sub_id ? "..." : "อนุมัติ"}</button>
+                      <button onClick={() => reviewSub(s, false)} disabled={busy === s.sub_id} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-medium text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">ปฏิเสธ</button>
+                      <button onClick={() => reviewSub(s, true)} disabled={busy === s.sub_id} className="rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{busy === s.sub_id ? "..." : "อนุมัติ"}</button>
                     </div>
                   </div>
                 </div>
@@ -195,9 +250,22 @@ export default function Staff() {
   );
 }
 
+function groupByOrder<T>(arr: T[], key: (x: T) => string): [string, T[]][] {
+  const map = new Map<string, T[]>();
+  for (const x of arr) {
+    const k = key(x);
+    const bucket = map.get(k);
+    if (bucket) bucket.push(x); else map.set(k, [x]);
+  }
+  return Array.from(map.entries());
+}
+
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return <button onClick={onClick} className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${active ? "bg-[#f37021] text-white" : "border border-white/10 bg-white/5 text-[#cbbfb4] hover:bg-white/10"}`}>{children}</button>;
 }
+function ScopeBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button onClick={onClick} className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? "bg-[#f37021]/15 text-[#f37021] border border-[#f37021]/40" : "border border-white/10 text-[#8a7d72] hover:bg-white/5"}`}>{children}</button>;
+}
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border border-white/10 bg-white/5 py-10 text-center text-sm text-[#8a7d72]">{children}</div>;
+  return <div className="rounded-xl border border-white/10 bg-white/5 py-10 px-4 text-center text-sm text-[#8a7d72]">{children}</div>;
 }

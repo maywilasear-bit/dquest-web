@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
 
-const COST = 50;
+const COST = 10;
 const RARITY: Record<string, string> = { common: "ธรรมดา", rare: "หายาก", epic: "อีพิค", legendary: "ตำนาน" };
-type Pull = { name: string; rarity: string; color: string; is_new: boolean; balance: number };
+type Pull = { name: string; rarity: string; color: string; is_new: boolean; refund: number; balance: number };
 
 export default function Gacha() {
   const router = useRouter();
@@ -79,7 +79,9 @@ export default function Gacha() {
             <div className="dq-anim text-center">
               <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: result.color }}>{RARITY[result.rarity] ?? result.rarity}</span>
               <p className="mt-1 text-xl font-bold text-[#faf5ef]">{result.name}</p>
-              {result.is_new && <span className="mt-2 inline-block rounded-full bg-[#f37021] px-2.5 py-0.5 text-[11px] font-bold text-white">ใหม่!</span>}
+              {result.is_new
+                ? <span className="mt-2 inline-block rounded-full bg-[#f37021] px-2.5 py-0.5 text-[11px] font-bold text-white">ใหม่!</span>
+                : <span className="mt-2 inline-block rounded-full bg-[#e9c75e]/15 px-2.5 py-0.5 text-[11px] font-bold text-[#e9c75e]">ได้ซ้ำ · คืน +{result.refund} เหรียญ</span>}
             </div>
           )}
           {error && <p className="text-sm text-red-400">{error}</p>}

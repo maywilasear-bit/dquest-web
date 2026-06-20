@@ -1,0 +1,25 @@
+name: Supabase keep-alive
+
+# กัน Supabase free tier "หลับ" หลังไม่มีคนใช้ 7 วัน — ยิง ping เบาๆ วันละครั้ง
+# ต้องตั้ง 2 secrets ใน GitHub repo (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_URL       = ค่าเดียวกับ NEXT_PUBLIC_SUPABASE_URL (เช่น https://xxxx.supabase.co)
+#   SUPABASE_ANON_KEY  = ค่าเดียวกับ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (sb_publishable_... หรือ anon key เดิม)
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # ทุกวัน ~09:17 น. (เวลาไทย) — 02:17 UTC
+  workflow_dispatch:        # กดรันเองได้จากแท็บ Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/seasons?select=number&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "HTTP $code"
+          # ถือว่าสำเร็จถ้าได้ 2xx/3xx/4xx (ขอแค่แตะฐานข้อมูลให้ตื่น — ไม่สน RLS)
+          if [ "$code" -ge 500 ] || [ "$code" -eq 000 ]; then exit 1; fi

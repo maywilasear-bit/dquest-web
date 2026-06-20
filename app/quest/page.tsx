@@ -40,9 +40,10 @@ export default function Quest() {
     const supabase = createClient();
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) { router.push("/"); return; }
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-    const path = `${u.user.id}/${Date.now()}.${ext}`;
-    const up = await supabase.storage.from("deed-photos").upload(path, file, { contentType: file.type });
+    // ย่อ + บีบอัดรูปฝั่งเครื่องก่อนอัป (กันพื้นที่ Storage เต็ม — แผน §6.4)
+    const blob = await compressImage(file);
+    const path = `${u.user.id}/${Date.now()}.jpg`;
+    const up = await supabase.storage.from("deed-photos").upload(path, blob, { contentType: "image/jpeg" });
     if (up.error) { setError("อัปโหลดรูปไม่สำเร็จ: " + up.error.message); setLoading(false); return; }
     const { error } = await supabase.rpc("submit_deed", { p_deed: deedId, p_photo: path, p_desc: desc });
     if (error) { setError(error.message); setLoading(false); return; }
@@ -122,6 +123,36 @@ export default function Quest() {
       </div>
     </Shell>
   );
+}
+
+// ย่อรูปให้ด้านยาวสุดไม่เกิน maxDim แล้วบีบอัดเป็น JPEG — ลดขนาดไฟล์ลงมาก
+async function compressImage(file: File, maxDim = 1280, quality = 0.72): Promise<Blob> {
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = dataUrl;
+    });
+    let w = img.width, h = img.height;
+    if (w >= h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+    else if (h > w && h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    return blob ?? file;
+  } catch {
+    return file; // ถ้าบีบอัดไม่ได้ ใช้ไฟล์เดิม (ไม่ให้พังการส่ง)
+  }
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
