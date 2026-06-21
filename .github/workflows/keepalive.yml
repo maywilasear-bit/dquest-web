@@ -23,3 +23,12 @@ jobs:
           echo "HTTP $code"
           # ถือว่าสำเร็จถ้าได้ 2xx/3xx/4xx (ขอแค่แตะฐานข้อมูลให้ตื่น — ไม่สน RLS)
           if [ "$code" -ge 500 ] || [ "$code" -eq 000 ]; then exit 1; fi
+
+      - name: Auto season rollover (ทำงานเฉพาะเมื่อซีซั่นครบกำหนด)
+        run: |
+          resp=$(curl -sS -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/end_season_if_due" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" -d '{}')
+          echo "rollover: $resp"
