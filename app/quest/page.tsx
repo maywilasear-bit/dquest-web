@@ -16,15 +16,25 @@ export default function Quest() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [win, setWin] = useState({ start: "07:35", end: "16:00" });
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
     (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) { router.push("/"); return; }
-      const { data } = await supabase.rpc("list_deed_types");
+      const [{ data }, { data: cfg }] = await Promise.all([
+        supabase.rpc("list_deed_types"),
+        supabase.rpc("get_settings"),
+      ]);
       setTypes((data as DeedType[]) ?? []);
+      const c = cfg as { quest_start?: string; quest_end?: string } | null;
+      if (c) setWin({ start: c.quest_start ?? "07:35", end: c.quest_end ?? "16:00" });
     })();
+    // อัปเดตด่านเวลาเองทุก 30 วิ กันค้างตอนข้ามช่วงเวลา
+    const id = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(id);
   }, [router]);
 
   function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -69,6 +79,7 @@ export default function Quest() {
   }
 
   const canSubmit = deedId !== null && file !== null && !loading;
+  const open = isWithin(win.start, win.end);
 
   return (
     <Shell>
@@ -115,12 +126,12 @@ export default function Quest() {
             className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021] focus:bg-white/10" />
         </div>
 
-        {!withinHours() && (
-          <p className="rounded-lg border border-[#e9c75e]/30 bg-[#e9c75e]/10 px-3 py-2 text-xs text-[#e9c75e]">ส่งความดีได้เฉพาะเวลา 07:35–16:00 น. เท่านั้น</p>
+        {!open && (
+          <p className="rounded-lg border border-[#e9c75e]/30 bg-[#e9c75e]/10 px-3 py-2 text-xs text-[#e9c75e]">ส่งความดีได้เฉพาะเวลา {win.start}–{win.end} น. เท่านั้น (เวลาไทย)</p>
         )}
         {error && <p className="text-sm text-red-400">{error}</p>}
 
-        <button onClick={submit} disabled={!canSubmit || !withinHours()}
+        <button onClick={submit} disabled={!canSubmit || !open}
           className="dq-press dq-shine rounded-lg bg-[#f37021] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0">
           {loading ? "กำลังส่ง..." : "ส่งให้ครูตรวจ"}
         </button>
@@ -159,11 +170,21 @@ async function compressImage(file: File, maxDim = 1280, quality = 0.72): Promise
   }
 }
 
-// ส่งได้เฉพาะ 07:35–16:00 (ใช้เวลาเครื่อง; server เป็นด่านจริงอีกชั้น)
-function withinHours(): boolean {
-  const n = new Date();
-  const m = n.getHours() * 60 + n.getMinutes();
-  return m >= 7 * 60 + 35 && m <= 16 * 60;
+// เวลาปัจจุบันเป็น "นาทีของวัน" ตามเวลาไทย — ไม่ขึ้นกับโซนเวลาของเครื่อง ให้ตรงกับ server
+function bkkMinutes(): number {
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const h = Number(p.find((x) => x.type === "hour")?.value ?? "0") % 24;
+  const m = Number(p.find((x) => x.type === "minute")?.value ?? "0");
+  return h * 60 + m;
+}
+function hmToMin(s: string): number {
+  const [h, m] = (s || "").split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+// อยู่ในช่วงเวลาที่อาจารย์ตั้งไว้ไหม (อ่านจาก settings; server เป็นด่านจริงอีกชั้น)
+function isWithin(start: string, end: string): boolean {
+  const cur = bkkMinutes();
+  return cur >= hmToMin(start) && cur <= hmToMin(end);
 }
 
 // ขอพิกัดจากเบราว์เซอร์ — คืน null ถ้าไม่อนุญาต/ไม่รองรับ (ไม่ทำให้ส่งไม่ได้)

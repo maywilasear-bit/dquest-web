@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { RollingNumber } from "../../utils/RollingNumber";
 
 type Status = { can_claim: boolean; streak: number; eff_streak: number; today_reward: number; d_coin: number; cycle: number[] };
 
@@ -63,7 +64,7 @@ export default function CheckIn() {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-[#e9c75e]">{Number(s.d_coin).toLocaleString()}</p>
+            <p className="text-lg font-bold text-[#e9c75e]"><RollingNumber value={Number(s.d_coin)} duration={700} /></p>
             <p className="text-xs text-[#8a7d72]">เหรียญ D</p>
           </div>
         </div>
