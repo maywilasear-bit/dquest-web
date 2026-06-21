@@ -2,28 +2,64 @@
 
 html { color-scheme: dark; }
 body {
-  background: #16100e;
+  background: radial-gradient(1200px 620px at 50% -12%, #1e1610, #16100e 60%);
+  background-attachment: fixed;
   color: #f5efe9;
+  min-height: 100vh;
 }
 
-@keyframes dq-fade-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes dq-breathe {
-  0%, 100% { opacity: 0.4;  transform: scale(1); }
-  50%      { opacity: 0.75; transform: scale(1.15); }
-}
-@keyframes dq-grow {
-  from { width: 0; }
-  to   { width: 2rem; }
-}
+/* ---------- keyframes ---------- */
+@keyframes dq-fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes dq-breathe { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.75; transform: scale(1.15); } }
+@keyframes dq-grow { from { width: 0; } to { width: 2rem; } }
+@keyframes dq-reveal { 0% { opacity: 0; transform: scale(0.5); } 60% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes dq-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes dq-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+@keyframes dq-pop { 0% { opacity: 0; transform: scale(0.8) translateY(10px); } 70% { opacity: 1; transform: scale(1.04) translateY(0); } 100% { transform: scale(1); } }
+@keyframes dq-spin { to { transform: rotate(360deg); } }
+@keyframes dq-shine { 0% { background-position: -160% 0; } 100% { background-position: 260% 0; } }
+@keyframes dq-count { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ---------- entrance ---------- */
 .dq-anim { opacity: 0; animation: dq-fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.dq-glow { animation: dq-breathe 8s ease-in-out infinite; }
+.dq-pop { opacity: 0; animation: dq-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .dq-grow { width: 0; animation: dq-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both; }
-@keyframes dq-reveal {
-  0% { opacity: 0; transform: scale(0.5); }
-  60% { opacity: 1; transform: scale(1.08); }
-  100% { opacity: 1; transform: scale(1); }
-}
 .dq-reveal { animation: dq-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.dq-count { animation: dq-count 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ---------- ambient / idle ---------- */
+.dq-glow { animation: dq-breathe 8s ease-in-out infinite; }
+.dq-float { animation: dq-float 5s ease-in-out infinite; }
+.dq-twinkle { animation: dq-twinkle 3s ease-in-out infinite; }
+.dq-spin-slow { animation: dq-spin 44s linear infinite; }
+
+/* ---------- micro-interactions ---------- */
+.dq-press { transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1); }
+.dq-press:active { transform: scale(0.94); }
+.dq-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.dq-lift:hover { transform: translateY(-2px); }
+
+/* shine sweep for primary buttons / medallions */
+.dq-shine { position: relative; overflow: hidden; }
+.dq-shine::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 32%, rgba(255, 255, 255, 0.22) 50%, transparent 68%);
+  background-size: 200% 100%;
+  animation: dq-shine 4.5s ease-in-out infinite;
+}
+
+/* faint diagonal texture (apply to a full-screen overlay div) */
+.dq-texture {
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 44px, rgba(255, 255, 255, 0.018) 44px, rgba(255, 255, 255, 0.018) 45px);
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(243, 112, 33, 0.28); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(243, 112, 33, 0.45); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::after, *::before { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

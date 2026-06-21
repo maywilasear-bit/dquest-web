@@ -84,7 +84,7 @@ export default function HomePage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
           <div className="dq-anim text-center" style={{ animationDelay: "120ms" }}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#f37021]">คะแนนความดี</p>
-            <p className="mt-1 text-6xl font-bold tracking-tight text-[#faf5ef]" style={{ textShadow: "0 0 40px rgba(243,112,33,0.25)" }}>{Number(data.d_score).toLocaleString()}</p>
+            <p className="dq-count mt-1 text-7xl font-extrabold tracking-tight text-[#faf5ef]" style={{ textShadow: "0 0 50px rgba(243,112,33,0.4)" }}>{Number(data.d_score).toLocaleString()}</p>
             <p className="mt-1 text-xs text-[#8a7d72]">ซีซั่น: {data.season}</p>
           </div>
 
@@ -98,7 +98,7 @@ export default function HomePage() {
         </div>
 
         {/* PRIMARY */}
-        <button onClick={() => router.push("/quest")} className="dq-anim flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-b from-[#ff8636] to-[#ef6a17] px-6 py-4 text-base font-bold text-white shadow-[0_18px_50px_-14px_rgba(243,112,33,0.7)] transition-all hover:-translate-y-0.5" style={{ animationDelay: "340ms" }}>
+        <button onClick={() => router.push("/quest")} className="dq-anim dq-press dq-shine flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-b from-[#ff8636] to-[#ef6a17] px-6 py-4 text-base font-bold text-white shadow-[0_18px_50px_-14px_rgba(243,112,33,0.7)] transition-transform hover:-translate-y-0.5" style={{ animationDelay: "340ms" }}>
           <IconHeart className="h-6 w-6" /> ทำความดี
         </button>
 
@@ -135,7 +135,7 @@ export default function HomePage() {
 
 function DockButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-3 text-[#cbbfb4] transition-all hover:-translate-y-0.5 hover:border-[#f37021]/40 hover:bg-white/10 hover:text-[#faf5ef]">
+    <button onClick={onClick} className="dq-press flex flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-3 text-[#cbbfb4] transition-all hover:-translate-y-0.5 hover:border-[#f37021]/40 hover:bg-white/10 hover:text-[#faf5ef]">
       {children}<span className="text-[11px] font-medium">{label}</span>
     </button>
   );
