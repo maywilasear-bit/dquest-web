@@ -113,7 +113,7 @@ export default function Profile() {
           <div className="flex gap-2">
             <input value={name} onChange={(e) => { setName(e.target.value); setErr(null); setMsg(null); }} placeholder="ชื่อเล่นของคุณ" maxLength={20}
               className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
-            <button onClick={save} disabled={saving} className="rounded-lg bg-[#f37021] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{saving ? "..." : "บันทึก"}</button>
+            <button onClick={save} disabled={saving} className="dq-press rounded-lg bg-[#f37021] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{saving ? "..." : "บันทึก"}</button>
           </div>
           {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
           {msg && <p className="mt-2 text-sm text-[#7dd87d]">{msg}</p>}
@@ -151,7 +151,7 @@ export default function Profile() {
 
             {avatarMsg && <p className="mt-3 text-sm text-[#7dd87d]">{avatarMsg}</p>}
             <button onClick={saveAvatar} disabled={savingAvatar}
-              className="mt-3 w-full rounded-lg bg-[#f37021] py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{savingAvatar ? "กำลังบันทึก..." : "บันทึกตัวละคร"}</button>
+              className="dq-press dq-shine mt-3 w-full rounded-lg bg-[#f37021] py-2.5 text-sm font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">{savingAvatar ? "กำลังบันทึก..." : "บันทึกตัวละคร"}</button>
           </div>
         )}
       </div>

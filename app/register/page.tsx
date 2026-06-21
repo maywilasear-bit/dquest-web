@@ -107,7 +107,7 @@ export default function Register() {
           {error && <p className="text-center text-sm text-red-400">{error}</p>}
           <div className="flex flex-col gap-3">
             <button onClick={claim} disabled={loading}
-              className="rounded-lg bg-[#f37021] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-all hover:-translate-y-0.5 disabled:opacity-60">
+              className="dq-press dq-shine rounded-lg bg-[#f37021] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-transform hover:-translate-y-0.5 disabled:opacity-60">
               {loading ? "กำลังส่งคำขอ..." : "ใช่ นี่คือฉัน"}
             </button>
             <button onClick={() => { setSelected(null); setError(null); }} className="text-sm text-[#8a7d72] hover:text-[#ab9d92]">

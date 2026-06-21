@@ -54,8 +54,8 @@ export default function Leaderboard() {
         </div>
 
         <div className="dq-anim mt-5 flex gap-2" style={{ animationDelay: "100ms" }}>
-          <button onClick={() => setTab("college")} className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${tab === "college" ? "bg-[#f37021] text-white" : "border border-white/10 bg-white/5 text-[#cbbfb4] hover:bg-white/10"}`}>ทั้งวิทยาลัย</button>
-          <button onClick={() => setTab("dept")} className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${tab === "dept" ? "bg-[#f37021] text-white" : "border border-white/10 bg-white/5 text-[#cbbfb4] hover:bg-white/10"}`}>แผนกประจำซีซั่น</button>
+          <button onClick={() => setTab("college")} className={`dq-press flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${tab === "college" ? "bg-[#f37021] text-white" : "border border-white/10 bg-white/5 text-[#cbbfb4] hover:bg-white/10"}`}>ทั้งวิทยาลัย</button>
+          <button onClick={() => setTab("dept")} className={`dq-press flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${tab === "dept" ? "bg-[#f37021] text-white" : "border border-white/10 bg-white/5 text-[#cbbfb4] hover:bg-white/10"}`}>แผนกประจำซีซั่น</button>
         </div>
         {tab === "dept" && <p className="mt-2 text-center text-xs text-[#8a7d72]">{board?.dept_label}</p>}
 

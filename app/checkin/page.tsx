@@ -92,7 +92,7 @@ export default function CheckIn() {
         <div className="dq-anim mt-7" style={{ animationDelay: "220ms" }}>
           {s.can_claim ? (
             <button onClick={claim} disabled={claiming}
-              className="w-full rounded-xl bg-[#e9c75e] py-4 text-base font-bold text-[#16100e] transition-colors hover:bg-[#f0d27a] disabled:opacity-60">
+              className="dq-press dq-shine w-full rounded-xl bg-[#e9c75e] py-4 text-base font-bold text-[#16100e] transition-colors hover:bg-[#f0d27a] disabled:opacity-60">
               {claiming ? "กำลังรับ..." : `รับ +${s.today_reward} เหรียญ`}
             </button>
           ) : (
@@ -112,7 +112,7 @@ export default function CheckIn() {
             </span>
             <p className="mt-4 text-3xl font-bold text-[#e9c75e]">+{reward}</p>
             <p className="mt-1 text-sm text-[#cbbfb4]">เหรียญ D</p>
-            <button onClick={() => setReward(null)} className="mt-6 w-full rounded-lg bg-white/10 py-2.5 text-sm font-semibold text-[#f5efe9] hover:bg-white/15">เยี่ยม!</button>
+            <button onClick={() => setReward(null)} className="dq-press mt-6 w-full rounded-lg bg-white/10 py-2.5 text-sm font-semibold text-[#f5efe9] hover:bg-white/15">เยี่ยม!</button>
           </div>
         </div>
       )}

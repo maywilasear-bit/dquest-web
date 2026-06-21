@@ -88,7 +88,7 @@ export default function Gacha() {
         </div>
 
         <button onClick={pull} disabled={pulling || (balance !== null && balance < COST)}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#ff8636] to-[#ef6a17] px-6 py-4 text-base font-bold text-white shadow-[0_18px_50px_-14px_rgba(243,112,33,0.7)] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0">
+          className="dq-press dq-shine flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#ff8636] to-[#ef6a17] px-6 py-4 text-base font-bold text-white shadow-[0_18px_50px_-14px_rgba(243,112,33,0.7)] transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0">
           {pulling ? "กำลังสุ่ม..." : result ? "สุ่มอีกครั้ง" : "สุ่ม 1 ครั้ง"}
           <span className="flex items-center gap-1 text-sm font-semibold">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 text-[10px]">D</span>{COST}

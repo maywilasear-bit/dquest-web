@@ -121,7 +121,7 @@ export default function Quest() {
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button onClick={submit} disabled={!canSubmit || !withinHours()}
-          className="rounded-lg bg-[#f37021] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0">
+          className="dq-press dq-shine rounded-lg bg-[#f37021] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0">
           {loading ? "กำลังส่ง..." : "ส่งให้ครูตรวจ"}
         </button>
       </div>
