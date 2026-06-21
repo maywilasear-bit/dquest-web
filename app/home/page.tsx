@@ -16,6 +16,7 @@ export default function HomePage() {
   const [checking, setChecking] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
+  const [suspended, setSuspended] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -25,7 +26,8 @@ export default function HomePage() {
       const { data: home, error } = await supabase.rpc("get_home_data");
       if (error || !home) { router.push("/"); return; }
       setData(home as Home);
-      const { data: prof } = await supabase.from("profiles").select("avatar_key, gender, department").eq("auth_id", u.user.id).maybeSingle();
+      const { data: prof } = await supabase.from("profiles").select("avatar_key, gender, department, status").eq("auth_id", u.user.id).maybeSingle();
+      if (prof?.status === "suspended") { setSuspended(true); setChecking(false); return; }
       setAvatar(parseAvatar(prof?.avatar_key, prof?.department, prof?.gender));
       setChecking(false);
     })();
@@ -36,6 +38,15 @@ export default function HomePage() {
     setTimeout(() => setToast(null), 1800);
   }
 
+  if (suspended) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center gap-3 bg-[#16100e] px-6 text-center text-[#f5efe9]">
+        <p className="text-xs font-semibold tracking-[0.2em] text-[#e7a18a]">บัญชีถูกระงับ</p>
+        <h1 className="text-2xl font-bold text-[#faf5ef]">บัญชีนี้ถูกระงับการใช้งานชั่วคราว</h1>
+        <p className="max-w-xs text-sm text-[#8a7d72]">กรุณาติดต่ออาจารย์เพื่อขอข้อมูลเพิ่มเติม</p>
+      </main>
+    );
+  }
   if (checking || !data) {
     return <main className="min-h-screen flex items-center justify-center bg-[#16100e] text-[#8a7d72]">กำลังโหลด...</main>;
   }

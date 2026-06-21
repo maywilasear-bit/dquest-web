@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { Character, parseAvatar } from "../../utils/Character";
 
-type Champ = { rank: number; name: string; realname: string | null; score: number };
+type Champ = { rank: number; name: string; realname: string | null; score: number; avatar: string | null };
 type HofSeason = {
   number: number;
   theme_label: string;
@@ -68,8 +69,9 @@ export default function HallOfFame() {
                 <div className="mt-4 rounded-xl border border-[#e9c75e]/30 bg-[#e9c75e]/10 p-4">
                   <p className="text-[11px] font-semibold tracking-wide text-[#e9c75e]">แชมป์แผนก · {s.dept_label}</p>
                   {s.department.map((c, k) => (
-                    <div key={k} className="mt-2 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
+                    <div key={k} className="mt-2 flex items-center gap-3">
+                      <Character config={parseAvatar(c.avatar)} className="h-14 w-auto shrink-0" />
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-[#faf5ef]">{c.name}</p>
                         {c.realname && c.realname !== c.name && <p className="truncate text-xs text-[#8a7d72]">{c.realname}</p>}
                       </div>
@@ -85,6 +87,7 @@ export default function HallOfFame() {
                 {s.college.map((c, k) => (
                   <div key={k} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
                     <RankBadge rank={c.rank} />
+                    <Character config={parseAvatar(c.avatar)} className="h-12 w-auto shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-[#faf5ef]">{c.name}</p>
                       {c.realname && c.realname !== c.name && <p className="truncate text-xs text-[#8a7d72]">{c.realname}</p>}

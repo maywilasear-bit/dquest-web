@@ -225,6 +225,15 @@ export default function Staff() {
     const { data } = await supabase.rpc("admin_recent_audit", { p_limit: 50 });
     setAuditRows((data as { action: string; actor_name: string; target_name: string; created_at: string }[]) ?? []);
   }
+  async function doClearAudit() {
+    if (window.prompt('พิมพ์ "ลบ" เพื่อยืนยันล้างประวัติทั้งหมด (ย้อนกลับไม่ได้)') !== "ลบ") return;
+    setBusy("audit"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_clear_audit");
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAuditRows([]);
+  }
   async function doEndSeason() {
     setBusy("season"); setError(null);
     const supabase = createClient();
@@ -492,19 +501,39 @@ export default function Staff() {
 
         {role === "admin" && (
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">ประวัติการกระทำ · ตรวจย้อนได้</p>
-              <button onClick={loadAudit} className="text-xs text-[#f37021] hover:underline">โหลด</button>
+              <div className="flex items-center gap-3">
+                <button onClick={loadAudit} className="text-xs text-[#f37021] hover:underline">โหลด</button>
+                {auditRows.length > 0 && <button onClick={doClearAudit} disabled={busy === "audit"} className="text-xs text-[#e7a18a] hover:underline disabled:opacity-50">ล้างประวัติ</button>}
+              </div>
             </div>
-            <div className="mt-2 flex flex-col gap-1.5">
-              {auditRows.length === 0 && <p className="text-xs text-[#6f635a]">กด “โหลด” เพื่อดูประวัติล่าสุด</p>}
-              {auditRows.map((a, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate text-[#cbbfb4]"><span className="text-[#faf5ef]">{ACTION_LABEL[a.action] ?? a.action}</span> · {a.actor_name}{a.target_name !== "—" ? " → " + a.target_name : ""}</span>
-                  <span className="shrink-0 text-[#6f635a]">{timeAgoTH(a.created_at)}</span>
-                </div>
-              ))}
-            </div>
+            {auditRows.length === 0 ? (
+              <p className="mt-2 text-xs text-[#6f635a]">กด “โหลด” เพื่อดูประวัติล่าสุด</p>
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-[#8a7d72]">
+                      <th className="pb-2 pr-2 font-medium">การกระทำ</th>
+                      <th className="pb-2 pr-2 font-medium">ผู้ทำ</th>
+                      <th className="pb-2 pr-2 font-medium">เป้าหมาย</th>
+                      <th className="pb-2 font-medium whitespace-nowrap">เวลา</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditRows.map((a, i) => (
+                      <tr key={i} className="border-t border-white/5">
+                        <td className="py-1.5 pr-2 text-[#faf5ef]">{ACTION_LABEL[a.action] ?? a.action}</td>
+                        <td className="py-1.5 pr-2 text-[#cbbfb4]">{a.actor_name}</td>
+                        <td className="py-1.5 pr-2 text-[#cbbfb4]">{a.target_name}</td>
+                        <td className="py-1.5 text-[#6f635a] whitespace-nowrap">{timeAgoTH(a.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
