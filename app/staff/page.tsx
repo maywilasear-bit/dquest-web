@@ -32,7 +32,7 @@ export default function Staff() {
   const [accList, setAccList] = useState<{ id: string; fullname: string; group_name: string | null; status: string }[]>([]);
   const [accQ, setAccQ] = useState("");
   const [accSel, setAccSel] = useState<{ id: string; fullname: string } | null>(null);
-  const [accInfo, setAccInfo] = useState<{ status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null>(null);
+  const [accInfo, setAccInfo] = useState<{ status: string; gender: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null>(null);
   const [accEdit, setAccEdit] = useState({ dscore: "0", dcoin: "0", behavior: "100" });
   const [accMsg, setAccMsg] = useState<string | null>(null);
   const [auditRows, setAuditRows] = useState<{ action: string; actor_name: string; target_name: string; created_at: string }[]>([]);
@@ -154,7 +154,7 @@ export default function Staff() {
     setAccSel(s); setAccInfo(null); setAccMsg(null);
     const supabase = createClient();
     const { data } = await supabase.rpc("admin_account_info", { p_profile: s.id });
-    const info = data as { status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
+    const info = data as { status: string; gender: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
     setAccInfo(info);
     if (info) setAccEdit({ dscore: String(info.d_score), dcoin: String(info.d_coin), behavior: String(info.behavior) });
   }
@@ -162,7 +162,7 @@ export default function Staff() {
     if (!accSel) return;
     const supabase = createClient();
     const { data } = await supabase.rpc("admin_account_info", { p_profile: accSel.id });
-    const info = data as { status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
+    const info = data as { status: string; gender: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
     setAccInfo(info);
     if (info) setAccEdit({ dscore: String(info.d_score), dcoin: String(info.d_coin), behavior: String(info.behavior) });
   }
@@ -201,6 +201,15 @@ export default function Staff() {
     setBusy(null);
     if (error) { setError(error.message); return; }
     setAccMsg("ปลดสิทธิ์แล้ว"); await refreshInfo();
+  }
+  async function setGender(g: "male" | "female") {
+    if (!accSel) return;
+    setBusy("gender"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_set_gender", { p_profile: accSel.id, p_gender: g });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAccMsg("เปลี่ยนเพศแล้ว"); await refreshInfo();
   }
   async function doResetSeasons() {
     if (!window.confirm("RESET ซีซั่นกลับไปซีซั่น 1?\nจะล้าง D Score ของทุกคน + Hall of Fame ทั้งหมด (เหรียญ/ของไม่หาย) — ย้อนกลับไม่ได้")) return;
@@ -478,6 +487,11 @@ export default function Staff() {
                 {!accInfo ? <p className="mt-2 text-xs text-[#6f635a]">กำลังโหลด...</p> : (
                   <>
                     <p className="mt-1 text-xs text-[#8a7d72]">สถานะ: {STATUS_LABEL[accInfo.status] ?? accInfo.status} · ชื่อเล่น: {accInfo.display_name ?? "—"}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="w-24 shrink-0 text-xs text-[#cbbfb4]">เพศ</span>
+                      <button onClick={() => setGender("male")} disabled={busy === "gender"} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${accInfo.gender === "male" ? "bg-[#3f7cc2] text-white" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>ชาย</button>
+                      <button onClick={() => setGender("female")} disabled={busy === "gender"} className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${accInfo.gender === "female" ? "bg-[#c44b8a] text-white" : "border border-white/10 text-[#cbbfb4] hover:bg-white/5"}`}>หญิง</button>
+                    </div>
                     <StatEdit label="D Score" value={accEdit.dscore} onChange={(v) => setAccEdit((e) => ({ ...e, dscore: v }))} onSet={() => setStat("dscore", Number(accEdit.dscore))} busy={busy === "stat"} />
                     <StatEdit label="D Coin" value={accEdit.dcoin} onChange={(v) => setAccEdit((e) => ({ ...e, dcoin: v }))} onSet={() => setStat("dcoin", Number(accEdit.dcoin))} busy={busy === "stat"} />
                     <StatEdit label="ความประพฤติ" value={accEdit.behavior} onChange={(v) => setAccEdit((e) => ({ ...e, behavior: v }))} onSet={() => setStat("behavior", Number(accEdit.behavior))} busy={busy === "stat"} />

@@ -24,6 +24,7 @@ export default function Announcements() {
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [del, setDel] = useState<string | null>(null);
 
   const loadAnn = useCallback(async () => {
     const supabase = createClient();
@@ -52,6 +53,16 @@ export default function Announcements() {
     setTitle(""); setBody("");
     await loadAnn();
     setPosting(false);
+  }
+
+  async function deleteAnn(id: string) {
+    if (!window.confirm("ลบประกาศนี้?")) return;
+    setDel(id); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_delete_announcement", { p_id: id });
+    setDel(null);
+    if (error) { setError(error.message); return; }
+    setItems((it) => it.filter((x) => x.id !== id));
   }
 
   if (loading) return <main className="min-h-screen flex items-center justify-center bg-[#16100e] text-[#8a7d72]">กำลังโหลด...</main>;
@@ -101,6 +112,10 @@ export default function Announcements() {
                   {a.body && <p className="mt-1 whitespace-pre-wrap text-sm text-[#ab9d92]">{a.body}</p>}
                   <p className="mt-2 text-xs text-[#6f635a]">{a.author_name} · {timeAgo(a.created_at)}</p>
                 </div>
+                {isStaff && (
+                  <button onClick={() => deleteAnn(a.id)} disabled={del === a.id}
+                    className="shrink-0 text-xs text-[#8a7d72] hover:text-[#e7a18a] disabled:opacity-50">{del === a.id ? "..." : "ลบ"}</button>
+                )}
               </div>
             </div>
           ))}
