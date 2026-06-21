@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
 import { Character, parseAvatar, AvatarConfig } from "../../utils/Character";
+import { RollingNumber } from "../../utils/RollingNumber";
 
 type Home = {
   name: string; fullname: string; department: string | null; level: string | null;
@@ -17,6 +18,8 @@ export default function HomePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<AvatarConfig | null>(null);
   const [suspended, setSuspended] = useState(false);
+  const [scoreFrom, setScoreFrom] = useState<number | null>(null);
+  const [coinFrom, setCoinFrom] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -29,6 +32,15 @@ export default function HomePage() {
       const { data: prof } = await supabase.from("profiles").select("avatar_key, gender, department, status").eq("auth_id", u.user.id).maybeSingle();
       if (prof?.status === "suspended") { setSuspended(true); setChecking(false); return; }
       setAvatar(parseAvatar(prof?.avatar_key, prof?.department, prof?.gender));
+      // เลขวิ่ง: ครั้งแรกของวันวิ่งจาก 0 · วันเดียวกันถ้าค่าเปลี่ยน (ได้/เสีย) วิ่งจากค่าก่อนหน้า · ไม่เปลี่ยน = ไม่วิ่ง
+      const h = home as Home;
+      const today = new Date().toDateString();
+      let st: { date?: string; score?: number; coin?: number } = {};
+      try { st = JSON.parse(localStorage.getItem("dq_stats") || "{}"); } catch {}
+      const newDay = st.date !== today;
+      setScoreFrom(newDay ? 0 : (st.score != null && st.score !== h.d_score ? st.score : h.d_score));
+      setCoinFrom(newDay ? 0 : (st.coin != null && st.coin !== h.d_coin ? st.coin : h.d_coin));
+      try { localStorage.setItem("dq_stats", JSON.stringify({ date: today, score: h.d_score, coin: h.d_coin })); } catch {}
       setChecking(false);
     })();
   }, [router]);
@@ -75,7 +87,7 @@ export default function HomePage() {
             </button>
             <div className="flex items-center gap-1.5 rounded-full border border-[#c2a14d]/30 bg-[#c2a14d]/10 py-1.5 pl-1.5 pr-3">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#e9c75e] to-[#c2a14d] text-[11px] font-bold text-[#3a2e10]">D</span>
-              <span className="text-sm font-semibold text-[#e9c75e]">{Number(data.d_coin).toLocaleString()}</span>
+              <RollingNumber value={Number(data.d_coin)} from={coinFrom ?? Number(data.d_coin)} className="text-sm font-semibold text-[#e9c75e]" />
             </div>
           </div>
         </div>
@@ -84,7 +96,7 @@ export default function HomePage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
           <div className="dq-anim text-center" style={{ animationDelay: "120ms" }}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#f37021]">คะแนนความดี</p>
-            <p className="dq-count mt-1 text-7xl font-extrabold tracking-tight text-[#faf5ef]" style={{ textShadow: "0 0 50px rgba(243,112,33,0.4)" }}>{Number(data.d_score).toLocaleString()}</p>
+            <p className="dq-count mt-1 text-7xl font-extrabold tracking-tight text-[#faf5ef]" style={{ textShadow: "0 0 50px rgba(243,112,33,0.4)" }}><RollingNumber value={Number(data.d_score)} from={scoreFrom ?? Number(data.d_score)} duration={1100} /></p>
             <p className="mt-1 text-xs text-[#8a7d72]">ซีซั่น: {data.season}</p>
           </div>
 

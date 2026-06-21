@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../utils/supabase/client";
+import { RollingNumber } from "../../utils/RollingNumber";
 
 const COST = 10;
 const RARITY: Record<string, string> = { common: "ธรรมดา", rare: "หายาก", epic: "อีพิค", legendary: "ตำนาน" };
@@ -49,7 +50,9 @@ export default function Gacha() {
           </button>
           <div className="flex items-center gap-1.5 rounded-full border border-[#c2a14d]/30 bg-[#c2a14d]/10 py-1.5 pl-1.5 pr-3">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-b from-[#e9c75e] to-[#c2a14d] text-[11px] font-bold text-[#3a2e10]">D</span>
-            <span className="text-sm font-semibold text-[#e9c75e]">{balance === null ? "…" : balance.toLocaleString()}</span>
+            {balance === null
+              ? <span className="text-sm font-semibold text-[#e9c75e]">…</span>
+              : <RollingNumber value={balance} duration={600} className="text-sm font-semibold text-[#e9c75e]" />}
           </div>
         </div>
 
