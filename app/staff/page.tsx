@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 
 type Claim = { claim_id: string; profile_id: string; fullname: string; group_name: string | null; department: string | null; advisor: string | null };
-type Sub = { sub_id: string; fullname: string; group_name: string | null; deed_label: string; min_score: number; max_score: number; description: string | null; photo_path: string | null; created_at: string };
+type Sub = { sub_id: string; fullname: string; group_name: string | null; deed_label: string; min_score: number; max_score: number; description: string | null; photo_path: string | null; lat: number | null; lng: number | null; created_at: string };
 
 export default function Staff() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -262,6 +262,7 @@ export default function Staff() {
                     <span className="shrink-0 rounded-full bg-white/5 px-2.5 py-1 text-[11px] text-[#cbbfb4]">{s.deed_label}</span>
                   </div>
                   {s.description && <p className="mt-2 text-sm text-[#ab9d92]">{s.description}</p>}
+                  <LocFlag lat={s.lat} lng={s.lng} />
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[#8a7d72]">คะแนน ({s.min_score}–{s.max_score})</span>
@@ -344,6 +345,32 @@ export default function Staff() {
         <p className="mt-8 text-center text-xs text-[#6f635a]">D-Quest · แผงเจ้าหน้าที่</p>
       </div>
     </main>
+  );
+}
+
+// พิกัดวิทยาลัย — ใส่ค่าจริงเพื่อเปิดธง "นอกพื้นที่"
+// วิธีหา: เปิด Google Maps → คลิกขวาที่วิทยาลัย → คลิกตัวเลขชุดแรกเพื่อก๊อป แล้วใส่เป็น { lat: ..., lng: ... }
+const CAMPUS: { lat: number; lng: number } | null = null;
+const CAMPUS_RADIUS_M = 300;
+function distM(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000, toR = (d: number) => (d * Math.PI) / 180;
+  const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+function LocFlag({ lat, lng }: { lat: number | null; lng: number | null }) {
+  if (lat == null || lng == null) return <p className="mt-2 text-xs text-[#6f635a]">ไม่มีข้อมูลตำแหน่ง</p>;
+  const far = CAMPUS ? distM(CAMPUS, { lat, lng }) > CAMPUS_RADIUS_M : null;
+  return (
+    <div className="mt-2 flex items-center gap-2 text-xs">
+      <a href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-[#60a5fa] hover:underline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+        ดูตำแหน่ง
+      </a>
+      {far === true && <span className="rounded-full bg-[#f37021]/15 px-2 py-0.5 font-medium text-[#f3a06a]">นอกพื้นที่</span>}
+      {far === false && <span className="rounded-full bg-[#4c9e6a]/15 px-2 py-0.5 font-medium text-[#7dd87d]">ในพื้นที่</span>}
+    </div>
   );
 }
 
