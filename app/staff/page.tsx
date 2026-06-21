@@ -28,9 +28,13 @@ export default function Staff() {
   const [awardAmount, setAwardAmount] = useState(10);
   const [awardReason, setAwardReason] = useState("");
   const [awardMsg, setAwardMsg] = useState<string | null>(null);
-  const [resetQ, setResetQ] = useState("");
-  const [resetResults, setResetResults] = useState<{ id: string; fullname: string; group_name: string | null; status: string }[]>([]);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [accFilter, setAccFilter] = useState<"all" | "unclaimed" | "active">("active");
+  const [accList, setAccList] = useState<{ id: string; fullname: string; group_name: string | null; status: string }[]>([]);
+  const [accQ, setAccQ] = useState("");
+  const [accSel, setAccSel] = useState<{ id: string; fullname: string } | null>(null);
+  const [accInfo, setAccInfo] = useState<{ status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null>(null);
+  const [accEdit, setAccEdit] = useState({ dscore: "0", dcoin: "0", behavior: "100" });
+  const [accMsg, setAccMsg] = useState<string | null>(null);
   const [auditRows, setAuditRows] = useState<{ action: string; actor_name: string; target_name: string; created_at: string }[]>([]);
 
   const loadClaims = useCallback(async (all: boolean) => {
@@ -140,22 +144,81 @@ export default function Staff() {
     setAwardMsg(`ให้ ${awardAmount} เหรียญ D แก่ ${awardSel.fullname} แล้ว`);
     setAwardSel(null); setAwardQ(""); setAwardResults([]); setAwardReason("");
   }
-  async function adminSearch(q: string) {
-    setResetQ(q); setResetMsg(null);
-    if (q.trim().length < 1) { setResetResults([]); return; }
+  async function loadAccounts(filter: "all" | "unclaimed" | "active", q = accQ) {
+    setAccFilter(filter); setAccSel(null); setAccInfo(null); setAccMsg(null);
     const supabase = createClient();
-    const { data } = await supabase.rpc("search_roster", { q: q.trim() });
-    setResetResults((data as { id: string; fullname: string; group_name: string | null; status: string }[]) ?? []);
+    const { data } = await supabase.rpc("admin_list_students", { p_status: filter, q: q.trim() });
+    setAccList((data as { id: string; fullname: string; group_name: string | null; status: string }[]) ?? []);
   }
-  async function doReset(r: { id: string; fullname: string }) {
-    if (!window.confirm(`ปลดการอ้างสิทธิ์ของ "${r.fullname}"?\nบัญชีนี้จะต้องค้นชื่อสมัครใหม่`)) return;
-    setBusy("reset:" + r.id); setError(null);
+  async function openAccount(s: { id: string; fullname: string }) {
+    setAccSel(s); setAccInfo(null); setAccMsg(null);
     const supabase = createClient();
-    const { error } = await supabase.rpc("admin_reset_claim", { p_profile: r.id });
+    const { data } = await supabase.rpc("admin_account_info", { p_profile: s.id });
+    const info = data as { status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
+    setAccInfo(info);
+    if (info) setAccEdit({ dscore: String(info.d_score), dcoin: String(info.d_coin), behavior: String(info.behavior) });
+  }
+  async function refreshInfo() {
+    if (!accSel) return;
+    const supabase = createClient();
+    const { data } = await supabase.rpc("admin_account_info", { p_profile: accSel.id });
+    const info = data as { status: string; display_name: string | null; d_coin: number; behavior: number; d_score: number; inv_count: number } | null;
+    setAccInfo(info);
+    if (info) setAccEdit({ dscore: String(info.d_score), dcoin: String(info.d_coin), behavior: String(info.behavior) });
+  }
+  async function setStat(field: "dscore" | "dcoin" | "behavior", value: number) {
+    if (!accSel || Number.isNaN(value)) return;
+    setBusy("stat"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_set_stat", { p_profile: accSel.id, p_field: field, p_value: value });
     setBusy(null);
     if (error) { setError(error.message); return; }
-    setResetMsg(`ปลดสิทธิ์ของ ${r.fullname} แล้ว — ให้เขาค้นชื่อสมัครใหม่`);
-    setResetResults((rs) => rs.map((x) => x.id === r.id ? { ...x, status: "unclaimed" } : x));
+    setAccMsg("บันทึกแล้ว"); await refreshInfo();
+  }
+  async function clearInv() {
+    if (!accSel || !window.confirm(`ล้างของในกระเป๋าของ "${accSel.fullname}" ทั้งหมด?`)) return;
+    setBusy("inv"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_clear_inventory", { p_profile: accSel.id });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAccMsg("ล้างกระเป๋าแล้ว"); await refreshInfo();
+  }
+  async function setAccStatus(status: "active" | "suspended") {
+    if (!accSel) return;
+    setBusy("status"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_set_status", { p_profile: accSel.id, p_status: status });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAccMsg(status === "suspended" ? "ระงับบัญชีแล้ว" : "ปลดระงับแล้ว"); await refreshInfo();
+  }
+  async function resetClaimAcc() {
+    if (!accSel || !window.confirm(`ปลดการอ้างสิทธิ์ของ "${accSel.fullname}"? ต้องสมัครใหม่`)) return;
+    setBusy("rc"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_reset_claim", { p_profile: accSel.id });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setAccMsg("ปลดสิทธิ์แล้ว"); await refreshInfo();
+  }
+  async function doResetSeasons() {
+    if (!window.confirm("RESET ซีซั่นกลับไปซีซั่น 1?\nจะล้าง D Score ของทุกคน + Hall of Fame ทั้งหมด (เหรียญ/ของไม่หาย) — ย้อนกลับไม่ได้")) return;
+    setBusy("rs"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_reset_seasons");
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setSeasonMsg("รีเซ็ตกลับซีซั่น 1 แล้ว · D Score ทุกคน + HoF ถูกล้าง");
+  }
+  async function doClearHof() {
+    if (!window.confirm("ล้าง Hall of Fame ทั้งหมด?")) return;
+    setBusy("hof"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_clear_hof");
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setSeasonMsg("ล้าง Hall of Fame แล้ว");
   }
   async function loadAudit() {
     const supabase = createClient();
@@ -365,29 +428,65 @@ export default function Staff() {
                 <button onClick={() => setConfirmEnd(false)} className="text-xs text-[#8a7d72] hover:text-[#ab9d92]">ยกเลิก</button>
               </div>
             )}
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
+              <button onClick={doResetSeasons} disabled={busy === "rs"} className="rounded-lg border border-[#b5482f]/50 px-3 py-1.5 text-xs font-semibold text-[#e7a18a] hover:bg-[#7a1f1f]/20 disabled:opacity-50">{busy === "rs" ? "..." : "RESET กลับซีซั่น 1"}</button>
+              <button onClick={doClearHof} disabled={busy === "hof"} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">{busy === "hof" ? "..." : "ล้าง Hall of Fame"}</button>
+            </div>
           </div>
         )}
 
         {role === "admin" && (
           <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">จัดการบัญชี · แก้เคสสมัครผิด/สวมชื่อ</p>
-            <p className="mt-1 text-xs text-[#8a7d72]">ปลดการอ้างสิทธิ์ → นักศึกษาคนนั้นต้องค้นชื่อสมัครใหม่ (ใช้ตอนมีคนกดผิดคน)</p>
-            <input value={resetQ} onChange={(e) => adminSearch(e.target.value)} placeholder="ค้นชื่อนักศึกษา"
-              className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
-            {resetMsg && <p className="mt-2 text-sm text-[#7dd87d]">{resetMsg}</p>}
-            <div className="mt-2 flex flex-col gap-2">
-              {resetResults.map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm text-[#faf5ef]">{r.fullname}</span>
-                    <span className="block truncate text-xs text-[#8a7d72]">{r.group_name} · {STATUS_LABEL[r.status] ?? r.status}</span>
-                  </span>
-                  {r.status !== "unclaimed"
-                    ? <button onClick={() => doReset(r)} disabled={busy === "reset:" + r.id} className="shrink-0 rounded-lg border border-[#e7a18a]/40 px-3 py-1.5 text-xs font-semibold text-[#e7a18a] hover:bg-[#7a1f1f]/20 disabled:opacity-50">{busy === "reset:" + r.id ? "..." : "ปลดสิทธิ์"}</button>
-                    : <span className="shrink-0 text-xs text-[#6f635a]">ยังไม่สมัคร</span>}
+            <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">จัดการบัญชีนักศึกษา</p>
+            {!accSel ? (
+              <>
+                <div className="mt-2 flex gap-2">
+                  <ScopeBtn active={accFilter === "active"} onClick={() => loadAccounts("active")}>ใช้งานอยู่</ScopeBtn>
+                  <ScopeBtn active={accFilter === "unclaimed"} onClick={() => loadAccounts("unclaimed")}>ยังไม่สมัคร</ScopeBtn>
+                  <ScopeBtn active={accFilter === "all"} onClick={() => loadAccounts("all")}>ทั้งหมด</ScopeBtn>
                 </div>
-              ))}
-            </div>
+                <input value={accQ} onChange={(e) => setAccQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") loadAccounts(accFilter, accQ); }} placeholder="ค้นชื่อ แล้วกด Enter"
+                  className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
+                <div className="mt-2 flex max-h-72 flex-col gap-1.5 overflow-y-auto">
+                  {accList.length === 0 && <p className="text-xs text-[#6f635a]">เลือกหมวดหรือค้นชื่อเพื่อแสดงรายชื่อ</p>}
+                  {accList.map((s) => (
+                    <button key={s.id} onClick={() => openAccount(s)} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm text-[#faf5ef]">{s.fullname}</span>
+                        <span className="block truncate text-xs text-[#8a7d72]">{s.group_name} · {STATUS_LABEL[s.status] ?? s.status}</span>
+                      </span>
+                      <span className="shrink-0 text-[#6f635a]">→</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="mt-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-sm font-semibold text-[#faf5ef]">{accSel.fullname}</p>
+                  <button onClick={() => { setAccSel(null); setAccInfo(null); }} className="shrink-0 text-xs text-[#8a7d72] hover:text-[#ab9d92]">← กลับ</button>
+                </div>
+                {!accInfo ? <p className="mt-2 text-xs text-[#6f635a]">กำลังโหลด...</p> : (
+                  <>
+                    <p className="mt-1 text-xs text-[#8a7d72]">สถานะ: {STATUS_LABEL[accInfo.status] ?? accInfo.status} · ชื่อเล่น: {accInfo.display_name ?? "—"}</p>
+                    <StatEdit label="D Score" value={accEdit.dscore} onChange={(v) => setAccEdit((e) => ({ ...e, dscore: v }))} onSet={() => setStat("dscore", Number(accEdit.dscore))} busy={busy === "stat"} />
+                    <StatEdit label="D Coin" value={accEdit.dcoin} onChange={(v) => setAccEdit((e) => ({ ...e, dcoin: v }))} onSet={() => setStat("dcoin", Number(accEdit.dcoin))} busy={busy === "stat"} />
+                    <StatEdit label="ความประพฤติ" value={accEdit.behavior} onChange={(v) => setAccEdit((e) => ({ ...e, behavior: v }))} onSet={() => setStat("behavior", Number(accEdit.behavior))} busy={busy === "stat"} />
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-xs text-[#cbbfb4]">ของในกระเป๋า: {accInfo.inv_count} ชิ้น</span>
+                      <button onClick={clearInv} disabled={busy === "inv"} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[#ab9d92] hover:bg-white/5 disabled:opacity-50">ล้างกระเป๋า</button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {accInfo.status === "suspended"
+                        ? <button onClick={() => setAccStatus("active")} disabled={busy === "status"} className="rounded-lg border border-[#4c9e6a]/40 px-3 py-1.5 text-xs font-semibold text-[#7dd87d] hover:bg-white/5 disabled:opacity-50">ปลดระงับ</button>
+                        : <button onClick={() => setAccStatus("suspended")} disabled={busy === "status"} className="rounded-lg border border-[#e7a18a]/40 px-3 py-1.5 text-xs font-semibold text-[#e7a18a] hover:bg-white/5 disabled:opacity-50">ระงับบัญชี</button>}
+                      <button onClick={resetClaimAcc} disabled={busy === "rc"} className="rounded-lg border border-[#e7a18a]/40 px-3 py-1.5 text-xs font-semibold text-[#e7a18a] hover:bg-white/5 disabled:opacity-50">ปลดการอ้างสิทธิ์</button>
+                    </div>
+                    {accMsg && <p className="mt-2 text-sm text-[#7dd87d]">{accMsg}</p>}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -447,6 +546,17 @@ const ACTION_LABEL: Record<string, string> = {
   review_approve: "อนุมัติความดี", review_reject: "ปฏิเสธความดี", award_coins: "ให้เหรียญ",
   reset_claim: "ปลดการอ้างสิทธิ์", season_rollover: "เปลี่ยนซีซั่น", end_season: "จบซีซั่น", adjust_behavior: "ปรับพฤติกรรม",
 };
+function StatEdit({ label, value, onChange, onSet, busy }: { label: string; value: string; onChange: (v: string) => void; onSet: () => void; busy: boolean }) {
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <span className="w-24 shrink-0 text-xs text-[#cbbfb4]">{label}</span>
+      <input type="number" value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-24 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-sm text-[#e9c75e] outline-none focus:border-[#f37021]" />
+      <button onClick={onSet} disabled={busy} className="rounded-lg bg-[#f37021] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">ตั้งค่า</button>
+    </div>
+  );
+}
+
 function timeAgoTH(iso: string): string {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return "เมื่อสักครู่";
