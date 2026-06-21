@@ -17,6 +17,7 @@ export type Slot = { item: string; color?: string; tf?: Transform } | null;
 export type AvatarConfig = {
   v: 2;
   body: { skin: string };
+  skinImg?: string | null;   // URL รูป skin เต็มตัว (ถ้ามี = แสดงแทนตัว geometric) — สำหรับ skin จาก AI/กาชา
   slots: {
     hairBack?: Slot; hairFront?: Slot; eyes?: Slot;
     top?: Slot; bottom?: Slot; shoes?: Slot;
@@ -114,7 +115,7 @@ export function parseAvatar(key: string | null | undefined, department?: string 
   try {
     const o = JSON.parse(key);
     if (o && o.v === 2 && o.slots) {
-      return { v: 2, body: { skin: o.body?.skin ?? d.body.skin }, slots: { ...d.slots, ...o.slots } };
+      return { v: 2, body: { skin: o.body?.skin ?? d.body.skin }, skinImg: o.skinImg ?? null, slots: { ...d.slots, ...o.slots } };
     }
     // migrate ของเก่า v1: {skin, style, hair, outfit}
     if (o && (o.skin || o.style || o.hair || o.outfit)) {
@@ -156,6 +157,15 @@ export function withOutfit(c: AvatarConfig, color: string): AvatarConfig {
 
 // ---- renderer (วาดทีละ layer จากล่างขึ้นบน) ----
 export function Character({ config, className = "", style: cssStyle }: { config: AvatarConfig; className?: string; style?: React.CSSProperties }) {
+  // ถ้ามี skin รูปเต็มตัว (จาก AI/กาชา) → แสดงรูปนั้นแทนตัว geometric
+  if (config.skinImg) {
+    return (
+      <svg viewBox="0 0 120 170" className={className} style={cssStyle} xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="60" cy="161" rx="35" ry="6" fill="#000" opacity="0.32" />
+        <image href={config.skinImg} x="6" y="2" width="108" height="164" preserveAspectRatio="xMidYMax meet" />
+      </svg>
+    );
+  }
   const skin = config.body?.skin ?? SKIN_TONES[1];
   const top = config.slots?.top?.color ?? OUTFIT_COLORS[0];
   const bottom = config.slots?.bottom?.color ?? "#37303a";
