@@ -59,8 +59,8 @@ export default function Quest() {
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#faf5ef]">ส่งความดีแล้ว</h1>
-            <p className="mt-2 text-sm text-[#ab9d92] max-w-xs">รอครูตรวจสอบ เมื่ออนุมัติแล้วจะได้รับคะแนนความดีและเหรียญ D</p>
+            <h1 className="text-2xl font-bold text-[#faf5ef]">ขอบคุณที่ทำความดีวันนี้</h1>
+            <p className="mt-2 text-sm text-[#ab9d92] max-w-xs">สิ่งเล็กๆ ที่คุณลงมือทำ ทำให้ส่วนรวมดีขึ้นจริงๆ · รอครูตรวจสักครู่ แล้วคะแนนกับเหรียญจะเข้า</p>
           </div>
           <button onClick={() => router.push("/home")} className="rounded-lg bg-[#f37021] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_40px_-12px_rgba(243,112,33,0.6)] transition-all hover:-translate-y-0.5">กลับหน้าหลัก</button>
         </div>
