@@ -36,6 +36,12 @@ export default function Staff() {
   const [accEdit, setAccEdit] = useState({ dscore: "0", dcoin: "0", behavior: "100" });
   const [accMsg, setAccMsg] = useState<string | null>(null);
   const [auditRows, setAuditRows] = useState<{ action: string; actor_name: string; target_name: string; created_at: string }[]>([]);
+  const [deeds, setDeeds] = useState<{ id: number; label_th: string; min_score: number; max_score: number; daily_cap: number | null; active: boolean }[]>([]);
+  const [deedSel, setDeedSel] = useState<{ id: number | null; label: string; min: string; max: string; cap: string; active: boolean } | null>(null);
+  const [tStart, setTStart] = useState("07:35");
+  const [tEnd, setTEnd] = useState("16:00");
+  const [cfgMsg, setCfgMsg] = useState<string | null>(null);
+  const [cfgLoaded, setCfgLoaded] = useState(false);
 
   const loadClaims = useCallback(async (all: boolean) => {
     const supabase = createClient();
@@ -242,6 +248,48 @@ export default function Staff() {
     setBusy(null);
     if (error) { setError(error.message); return; }
     setAuditRows([]);
+  }
+  async function loadSettings() {
+    const supabase = createClient();
+    const [d, sg] = await Promise.all([supabase.rpc("admin_list_deeds"), supabase.rpc("get_settings")]);
+    setDeeds((d.data as typeof deeds) ?? []);
+    const cfg = (sg.data as Record<string, string>) ?? {};
+    if (cfg.quest_start) setTStart(cfg.quest_start);
+    if (cfg.quest_end) setTEnd(cfg.quest_end);
+    setDeedSel(null); setCfgLoaded(true); setCfgMsg(null);
+  }
+  function selectDeed(d: { id: number; label_th: string; min_score: number; max_score: number; daily_cap: number | null; active: boolean }) {
+    setDeedSel({ id: d.id, label: d.label_th, min: String(d.min_score), max: String(d.max_score), cap: d.daily_cap == null ? "" : String(d.daily_cap), active: d.active });
+    setCfgMsg(null);
+  }
+  async function saveDeed() {
+    if (!deedSel) return;
+    setBusy("deed"); setError(null);
+    const supabase = createClient();
+    const cap = deedSel.cap.trim() === "" ? null : Number(deedSel.cap);
+    const { error } = await supabase.rpc("admin_save_deed", { p_id: deedSel.id, p_label: deedSel.label.trim(), p_min: Number(deedSel.min), p_max: Number(deedSel.max), p_cap: cap, p_active: deedSel.active });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setCfgMsg("บันทึกแล้ว"); await loadSettings();
+  }
+  async function deleteDeed() {
+    if (!deedSel || deedSel.id == null) { setDeedSel(null); return; }
+    if (!window.confirm("ลบประเภทความดีนี้?")) return;
+    setBusy("deeddel"); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_delete_deed", { p_id: deedSel.id });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setCfgMsg("ลบแล้ว"); await loadSettings();
+  }
+  async function saveWindow() {
+    setBusy("win"); setError(null);
+    const supabase = createClient();
+    const e1 = await supabase.rpc("admin_set_setting", { p_key: "quest_start", p_value: tStart });
+    const e2 = await supabase.rpc("admin_set_setting", { p_key: "quest_end", p_value: tEnd });
+    setBusy(null);
+    if (e1.error || e2.error) { setError((e1.error || e2.error)!.message); return; }
+    setCfgMsg("บันทึกช่วงเวลาแล้ว");
   }
   async function doEndSeason() {
     setBusy("season"); setError(null);
@@ -546,6 +594,73 @@ export default function Staff() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {role === "admin" && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">ตั้งค่าเศรษฐกิจ</p>
+              <button onClick={loadSettings} className="text-xs text-[#f37021] hover:underline">{cfgLoaded ? "รีเฟรช" : "โหลด"}</button>
+            </div>
+            {cfgMsg && <p className="mt-2 text-sm text-[#7dd87d]">{cfgMsg}</p>}
+            {!cfgLoaded ? (
+              <p className="mt-2 text-xs text-[#6f635a]">กด “โหลด” เพื่อแก้ช่วงเวลา + ประเภทความดี</p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-4">
+                <div>
+                  <p className="text-xs text-[#8a7d72]">ช่วงเวลาส่งความดีได้ (เวลาไทย)</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input type="time" value={tStart} onChange={(e) => setTStart(e.target.value)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#faf5ef]" />
+                    <span className="text-[#8a7d72]">–</span>
+                    <input type="time" value={tEnd} onChange={(e) => setTEnd(e.target.value)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#faf5ef]" />
+                    <button onClick={saveWindow} disabled={busy === "win"} className="ml-auto rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">บันทึก</button>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 pt-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-[#8a7d72]">ประเภทความดี</p>
+                    {!deedSel && <button onClick={() => setDeedSel({ id: null, label: "", min: "1", max: "3", cap: "", active: true })} className="text-xs text-[#f37021] hover:underline">+ เพิ่ม</button>}
+                  </div>
+                  {!deedSel ? (
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {deeds.map((d) => (
+                        <button key={d.id} onClick={() => selectDeed(d)} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm text-[#faf5ef]">{d.label_th}{!d.active && <span className="ml-1 text-[10px] text-[#8a7d72]">(ปิด)</span>}</span>
+                            <span className="block text-xs text-[#8a7d72]">{d.min_score}–{d.max_score} คะแนน · เพดาน {d.daily_cap ?? "ไม่จำกัด"}/วัน</span>
+                          </span>
+                          <span className="shrink-0 text-[#6f635a]">→</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex flex-col gap-2">
+                      <input value={deedSel.label} onChange={(e) => setDeedSel({ ...deedSel, label: e.target.value })} placeholder="ชื่อประเภท เช่น เก็บขยะ" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#faf5ef] placeholder:text-[#6f635a]" />
+                      <div className="flex items-center gap-2 text-xs text-[#cbbfb4]">
+                        <span className="w-20 shrink-0">คะแนน</span>
+                        <input type="number" value={deedSel.min} onChange={(e) => setDeedSel({ ...deedSel, min: e.target.value })} className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-[#e9c75e]" />
+                        <span>–</span>
+                        <input type="number" value={deedSel.max} onChange={(e) => setDeedSel({ ...deedSel, max: e.target.value })} className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-[#e9c75e]" />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[#cbbfb4]">
+                        <span className="w-20 shrink-0">เพดาน/วัน</span>
+                        <input type="number" value={deedSel.cap} onChange={(e) => setDeedSel({ ...deedSel, cap: e.target.value })} placeholder="ว่าง = ไม่จำกัด" className="w-36 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-center text-[#faf5ef] placeholder:text-[#6f635a]" />
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-[#cbbfb4]">
+                        <input type="checkbox" checked={deedSel.active} onChange={(e) => setDeedSel({ ...deedSel, active: e.target.checked })} /> เปิดใช้งาน
+                      </label>
+                      <div className="mt-1 flex items-center gap-2">
+                        <button onClick={saveDeed} disabled={busy === "deed"} className="rounded-lg bg-[#f37021] px-4 py-2 text-xs font-semibold text-white hover:bg-[#ff7d2a] disabled:opacity-50">บันทึก</button>
+                        {deedSel.id != null && <button onClick={deleteDeed} disabled={busy === "deeddel"} className="rounded-lg border border-[#e7a18a]/40 px-3 py-2 text-xs font-semibold text-[#e7a18a] hover:bg-[#7a1f1f]/20 disabled:opacity-50">ลบ</button>}
+                        <button onClick={() => setDeedSel(null)} className="text-xs text-[#8a7d72] hover:text-[#ab9d92]">ยกเลิก</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
