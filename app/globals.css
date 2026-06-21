@@ -53,6 +53,94 @@ body {
   background-image: repeating-linear-gradient(45deg, transparent, transparent 44px, rgba(255, 255, 255, 0.018) 44px, rgba(255, 255, 255, 0.018) 45px);
 }
 
+/* ============================================================
+   GACHAPON — ชุดอนิเมชันตู้กาชา (หลายจังหวะ)
+   ============================================================ */
+/* ตัวตู้สั่นตอนบิด */
+@keyframes gc-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  15% { transform: translate(-2.5px, 1px) rotate(-1deg); }
+  30% { transform: translate(2.5px, -1px) rotate(1deg); }
+  45% { transform: translate(-2px, 2px) rotate(-0.7deg); }
+  60% { transform: translate(2px, -2px) rotate(0.7deg); }
+  75% { transform: translate(-1px, 1px) rotate(-0.4deg); }
+}
+.gc-shake { animation: gc-shake 0.42s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* ลูกบิดหมุน (one-shot) */
+@keyframes gc-knob { from { transform: rotate(0); } to { transform: rotate(540deg); } }
+.gc-knob-turn { animation: gc-knob 1.15s cubic-bezier(0.45, 0.05, 0.3, 1) both; transform-box: fill-box; transform-origin: center; }
+
+/* แคปซูลในโดมขยับ (idle เบา / crank แรง) */
+@keyframes gc-jiggle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-3px) rotate(2deg); }
+  50% { transform: translateY(2px) rotate(0); }
+  75% { transform: translateY(-1px) rotate(-2deg); }
+}
+.gc-jiggle { animation: gc-jiggle 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.gc-jiggle-fast { animation: gc-jiggle 0.34s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* เหรียญหยอดเข้าช่อง */
+@keyframes gc-coin-in { 0% { transform: translateY(-46px) scale(0.8); opacity: 0; } 35% { opacity: 1; } 100% { transform: translateY(2px) scale(0.7); opacity: 0; } }
+.gc-coin-in { animation: gc-coin-in 0.6s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+
+/* แคปซูลหล่นลงมากลางจอ + เด้ง */
+@keyframes gc-drop {
+  0% { transform: translateY(-280px) scale(0.65); opacity: 0; }
+  50% { transform: translateY(0) scale(1); opacity: 1; }
+  66% { transform: translateY(-30px) scale(1.03); }
+  80% { transform: translateY(0) scale(1); }
+  90% { transform: translateY(-11px); }
+  100% { transform: translateY(0); }
+}
+.gc-drop { animation: gc-drop 1.15s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+
+/* แคปซูลรอเปิด — เขย่าเรียกความสนใจ */
+@keyframes gc-wiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-7deg); }
+  40% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(3deg); }
+}
+.gc-wiggle { animation: gc-wiggle 1.4s ease-in-out infinite; transform-origin: center bottom; }
+
+/* แคปซูลแตกออกเป็นสองซีก */
+@keyframes gc-half-top { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(-72px, -94px) rotate(-54deg); opacity: 0; } }
+@keyframes gc-half-bottom { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(76px, 98px) rotate(62deg); opacity: 0; } }
+.gc-half-top { animation: gc-half-top 0.72s cubic-bezier(0.3, 0.7, 0.3, 1) forwards; }
+.gc-half-bottom { animation: gc-half-bottom 0.72s cubic-bezier(0.3, 0.7, 0.3, 1) forwards; }
+
+/* แสงระเบิดเป็นวง */
+@keyframes gc-burst { 0% { transform: scale(0.2); opacity: 0.9; } 100% { transform: scale(1.6); opacity: 0; } }
+.gc-burst { animation: gc-burst 0.8s ease-out forwards; transform-origin: center; }
+
+/* รัศมีหมุนช้า (ฉากหลังรางวัล) */
+@keyframes gc-rays-spin { to { transform: rotate(360deg); } }
+.gc-rays-spin { animation: gc-rays-spin 22s linear infinite; transform-origin: center; }
+
+/* รางวัลผุดขึ้น */
+@keyframes gc-prize {
+  0% { transform: scale(0) rotate(-28deg); opacity: 0; }
+  50% { transform: scale(1.16) rotate(6deg); opacity: 1; }
+  72% { transform: scale(0.94) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.gc-prize { animation: gc-prize 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+
+/* อนุภาคกระจาย — ใช้ตัวแปร --dx/--dy ต่อชิ้น */
+@keyframes gc-spark { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.2); opacity: 0; } }
+.gc-spark { animation: gc-spark 0.95s ease-out forwards; }
+
+/* คอนเฟตตีร่วง (เฉพาะระดับสูง) */
+@keyframes gc-confetti { 0% { transform: translateY(-16px) rotate(0); opacity: 1; } 100% { transform: translateY(380px) rotate(560deg); opacity: 0; } }
+.gc-confetti { animation: gc-confetti 1.9s linear forwards; }
+
+/* แฟลชขาวจังหวะแตก */
+@keyframes gc-flash { 0% { opacity: 0; } 12% { opacity: 0.55; } 100% { opacity: 0; } }
+.gc-flash { animation: gc-flash 0.6s ease-out forwards; }
+
 /* scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(243, 112, 33, 0.28); border-radius: 8px; }
