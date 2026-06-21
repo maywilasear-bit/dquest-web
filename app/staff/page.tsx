@@ -28,6 +28,10 @@ export default function Staff() {
   const [awardAmount, setAwardAmount] = useState(10);
   const [awardReason, setAwardReason] = useState("");
   const [awardMsg, setAwardMsg] = useState<string | null>(null);
+  const [resetQ, setResetQ] = useState("");
+  const [resetResults, setResetResults] = useState<{ id: string; fullname: string; group_name: string | null; status: string }[]>([]);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const [auditRows, setAuditRows] = useState<{ action: string; actor_name: string; target_name: string; created_at: string }[]>([]);
 
   const loadClaims = useCallback(async (all: boolean) => {
     const supabase = createClient();
@@ -135,6 +139,28 @@ export default function Staff() {
     if (error) { setError(error.message); return; }
     setAwardMsg(`ให้ ${awardAmount} เหรียญ D แก่ ${awardSel.fullname} แล้ว`);
     setAwardSel(null); setAwardQ(""); setAwardResults([]); setAwardReason("");
+  }
+  async function adminSearch(q: string) {
+    setResetQ(q); setResetMsg(null);
+    if (q.trim().length < 1) { setResetResults([]); return; }
+    const supabase = createClient();
+    const { data } = await supabase.rpc("search_roster", { q: q.trim() });
+    setResetResults((data as { id: string; fullname: string; group_name: string | null; status: string }[]) ?? []);
+  }
+  async function doReset(r: { id: string; fullname: string }) {
+    if (!window.confirm(`ปลดการอ้างสิทธิ์ของ "${r.fullname}"?\nบัญชีนี้จะต้องค้นชื่อสมัครใหม่`)) return;
+    setBusy("reset:" + r.id); setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("admin_reset_claim", { p_profile: r.id });
+    setBusy(null);
+    if (error) { setError(error.message); return; }
+    setResetMsg(`ปลดสิทธิ์ของ ${r.fullname} แล้ว — ให้เขาค้นชื่อสมัครใหม่`);
+    setResetResults((rs) => rs.map((x) => x.id === r.id ? { ...x, status: "unclaimed" } : x));
+  }
+  async function loadAudit() {
+    const supabase = createClient();
+    const { data } = await supabase.rpc("admin_recent_audit", { p_limit: 50 });
+    setAuditRows((data as { action: string; actor_name: string; target_name: string; created_at: string }[]) ?? []);
   }
   async function doEndSeason() {
     setBusy("season"); setError(null);
@@ -342,6 +368,47 @@ export default function Staff() {
           </div>
         )}
 
+        {role === "admin" && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">จัดการบัญชี · แก้เคสสมัครผิด/สวมชื่อ</p>
+            <p className="mt-1 text-xs text-[#8a7d72]">ปลดการอ้างสิทธิ์ → นักศึกษาคนนั้นต้องค้นชื่อสมัครใหม่ (ใช้ตอนมีคนกดผิดคน)</p>
+            <input value={resetQ} onChange={(e) => adminSearch(e.target.value)} placeholder="ค้นชื่อนักศึกษา"
+              className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-[#faf5ef] placeholder:text-[#6f635a] outline-none focus:border-[#f37021]" />
+            {resetMsg && <p className="mt-2 text-sm text-[#7dd87d]">{resetMsg}</p>}
+            <div className="mt-2 flex flex-col gap-2">
+              {resetResults.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-[#faf5ef]">{r.fullname}</span>
+                    <span className="block truncate text-xs text-[#8a7d72]">{r.group_name} · {STATUS_LABEL[r.status] ?? r.status}</span>
+                  </span>
+                  {r.status !== "unclaimed"
+                    ? <button onClick={() => doReset(r)} disabled={busy === "reset:" + r.id} className="shrink-0 rounded-lg border border-[#e7a18a]/40 px-3 py-1.5 text-xs font-semibold text-[#e7a18a] hover:bg-[#7a1f1f]/20 disabled:opacity-50">{busy === "reset:" + r.id ? "..." : "ปลดสิทธิ์"}</button>
+                    : <span className="shrink-0 text-xs text-[#6f635a]">ยังไม่สมัคร</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {role === "admin" && (
+          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold tracking-wide text-[#cbbfb4]">ประวัติการกระทำ · ตรวจย้อนได้</p>
+              <button onClick={loadAudit} className="text-xs text-[#f37021] hover:underline">โหลด</button>
+            </div>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {auditRows.length === 0 && <p className="text-xs text-[#6f635a]">กด “โหลด” เพื่อดูประวัติล่าสุด</p>}
+              {auditRows.map((a, i) => (
+                <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate text-[#cbbfb4]"><span className="text-[#faf5ef]">{ACTION_LABEL[a.action] ?? a.action}</span> · {a.actor_name}{a.target_name !== "—" ? " → " + a.target_name : ""}</span>
+                  <span className="shrink-0 text-[#6f635a]">{timeAgoTH(a.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <p className="mt-8 text-center text-xs text-[#6f635a]">D-Quest · แผงเจ้าหน้าที่</p>
       </div>
     </main>
@@ -372,6 +439,21 @@ function LocFlag({ lat, lng }: { lat: number | null; lng: number | null }) {
       {far === false && <span className="rounded-full bg-[#4c9e6a]/15 px-2 py-0.5 font-medium text-[#7dd87d]">ในพื้นที่</span>}
     </div>
   );
+}
+
+const STATUS_LABEL: Record<string, string> = { unclaimed: "ยังไม่สมัคร", pending: "รออนุมัติ", active: "ใช้งานอยู่", suspended: "ระงับ" };
+const ACTION_LABEL: Record<string, string> = {
+  approve_claim: "อนุมัติตัวตน", approve_claim_bulk: "อนุมัติตัวตน(กลุ่ม)", reject_claim: "ปฏิเสธตัวตน",
+  review_approve: "อนุมัติความดี", review_reject: "ปฏิเสธความดี", award_coins: "ให้เหรียญ",
+  reset_claim: "ปลดการอ้างสิทธิ์", season_rollover: "เปลี่ยนซีซั่น", end_season: "จบซีซั่น", adjust_behavior: "ปรับพฤติกรรม",
+};
+function timeAgoTH(iso: string): string {
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "เมื่อสักครู่";
+  if (m < 60) return `${m} นาทีก่อน`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ชม.ก่อน`;
+  return `${Math.floor(h / 24)} วันก่อน`;
 }
 
 function groupByOrder<T>(arr: T[], key: (x: T) => string): [string, T[]][] {
